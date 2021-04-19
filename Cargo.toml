@@ -1,0 +1,12 @@
+[package]
+authors = ["EFanZh <efanzh@gmail.com>"]
+edition = "2018"
+name = "ast-demangle"
+version = "0.1.0"
+
+[dependencies]
+nom = "*"
+punycode = "*"
+
+[dev-dependencies]
+rustc-demangle = "*"
