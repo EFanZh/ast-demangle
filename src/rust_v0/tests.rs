@@ -130,7 +130,7 @@ fn test_rustc_demangle_crate_with_leading_digit() {
                         name: "123foo".into(),
                     })
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "bar".into(),
                     }
@@ -157,7 +157,7 @@ fn test_rustc_demangle_utf8_idents() {
                         name: "utf8_idents".into()
                     })
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "საჭმელად_გემრიელი_სადილი".into()
                     }
@@ -188,19 +188,19 @@ fn test_rustc_demangle_closure_1() {
                                 name: "cc".into()
                             })
                             .into(),
-                            identifier: Identifier {
+                            name: Identifier {
                                 disambiguator: 0,
                                 name: "spawn".into()
                             }
                         }
                         .into(),
-                        identifier: Identifier {
+                        name: Identifier {
                             disambiguator: 0,
                             name: "".into()
                         }
                     }
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "".into()
                     }
@@ -228,7 +228,7 @@ fn test_rustc_demangle_closure_2() {
     let core_slice = Rc::new(Path::Nested {
         namespace: b'g',
         path: Rc::clone(&crate_root),
-        identifier: id("slice"),
+        name: id("slice"),
     });
 
     assert_eq!(
@@ -254,7 +254,7 @@ fn test_rustc_demangle_closure_2() {
                                         path: Path::Nested {
                                             namespace: b'y',
                                             path: Rc::clone(&core_slice),
-                                            identifier: id("Iter")
+                                            name: id("Iter")
                                         }
                                         .into(),
                                         generic_args: vec![GenericArg::Type(Type::Basic(BasicType::U8).into())]
@@ -262,20 +262,20 @@ fn test_rustc_demangle_closure_2() {
                                     .into()
                                 )
                                 .into(),
-                                path: Path::Nested {
+                                trait_: Path::Nested {
                                     namespace: b'u',
                                     path: Path::Nested {
                                         namespace: b'g',
                                         path: Path::Nested {
                                             namespace: b'o',
                                             path: Rc::clone(&crate_root),
-                                            identifier: id("iter")
+                                            name: id("iter")
                                         }
                                         .into(),
-                                        identifier: id("iterator")
+                                        name: id("iterator")
                                     }
                                     .into(),
-                                    identifier: Identifier {
+                                    name: Identifier {
                                         disambiguator: 0,
                                         name: "Iterator".into()
                                     }
@@ -283,7 +283,7 @@ fn test_rustc_demangle_closure_2() {
                                 .into()
                             }
                             .into(),
-                            identifier: id("rposition")
+                            name: id("rposition")
                         }
                         .into(),
                         generic_args: vec![GenericArg::Type(
@@ -295,13 +295,13 @@ fn test_rustc_demangle_closure_2() {
                                         path: Path::Nested {
                                             namespace: b'p',
                                             path: Rc::clone(&core_slice),
-                                            identifier: id("memchr")
+                                            name: id("memchr")
                                         }
                                         .into(),
-                                        identifier: id("memrchr")
+                                        name: id("memrchr")
                                     }
                                     .into(),
-                                    identifier: Identifier {
+                                    name: Identifier {
                                         disambiguator: 1,
                                         name: "".into()
                                     }
@@ -312,7 +312,7 @@ fn test_rustc_demangle_closure_2() {
                         )]
                     }
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "".into()
                     }
@@ -344,13 +344,13 @@ fn test_rustc_demangle_dyn_trait() {
                                 name: "alloc".into()
                             })
                             .into(),
-                            identifier: Identifier {
+                            name: Identifier {
                                 disambiguator: 0,
                                 name: "alloc".into()
                             }
                         }
                         .into(),
-                        identifier: Identifier {
+                        name: Identifier {
                             disambiguator: 0,
                             name: "box_free".into()
                         }
@@ -359,7 +359,7 @@ fn test_rustc_demangle_dyn_trait() {
                     generic_args: vec![GenericArg::Type(
                         Type::DynTrait {
                             dyn_bounds: DynBounds {
-                                binder: 0,
+                                bound_lifetimes: 0,
                                 dyn_traits: vec![DynTrait {
                                     path: Path::GenericArgs {
                                         path: Path::Nested {
@@ -371,13 +371,13 @@ fn test_rustc_demangle_dyn_trait() {
                                                     name: "alloc".into()
                                                 })
                                                 .into(),
-                                                identifier: Identifier {
+                                                name: Identifier {
                                                     disambiguator: 0,
                                                     name: "boxed".into()
                                                 }
                                             }
                                             .into(),
-                                            identifier: Identifier {
+                                            name: Identifier {
                                                 disambiguator: 0,
                                                 name: "FnBox".into()
                                             }
@@ -387,7 +387,7 @@ fn test_rustc_demangle_dyn_trait() {
                                     }
                                     .into(),
                                     dyn_trait_assoc_bindings: vec![DynTraitAssocBinding {
-                                        identifier: "Output".into(),
+                                        name: "Output".into(),
                                         type_: Type::Basic(BasicType::Unit).into()
                                     }]
                                 }]
@@ -426,7 +426,7 @@ fn test_rustc_demangle_const_generics_usize_123() {
                             name: "arrayvec".into()
                         })
                         .into(),
-                        identifier: Identifier {
+                        name: Identifier {
                             disambiguator: 0,
                             name: "ArrayVec".into()
                         }
@@ -476,7 +476,7 @@ fn test_rustc_demangle_const_generics_u8_11() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Unsigned".into()
                                 }
@@ -527,7 +527,7 @@ fn test_rustc_demangle_const_generics_i16_152() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Signed".into()
                                 }
@@ -578,7 +578,7 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Signed".into()
                                 }
@@ -629,7 +629,7 @@ fn test_rustc_demangle_const_generics_bool_false() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Bool".into()
                                 }
@@ -680,7 +680,7 @@ fn test_rustc_demangle_const_generics_bool_true() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Bool".into()
                                 }
@@ -731,7 +731,7 @@ fn test_rustc_demangle_const_generics_char_v() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Char".into()
                                 }
@@ -782,7 +782,7 @@ fn test_rustc_demangle_const_generics_char_lf() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Char".into()
                                 }
@@ -833,7 +833,7 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                                     name: "const_generic".into()
                                 })
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "Char".into()
                                 }
@@ -888,7 +888,7 @@ fn test_rustc_demangle_const_generics_placeholder() {
                                             name: "const_generic".into()
                                         })
                                         .into(),
-                                        identifier: Identifier {
+                                        name: Identifier {
                                             disambiguator: 0,
                                             name: "Foo".into()
                                         }
@@ -901,13 +901,13 @@ fn test_rustc_demangle_const_generics_placeholder() {
                             .into()
                         }
                         .into(),
-                        identifier: Identifier {
+                        name: Identifier {
                             disambiguator: 0,
                             name: "foo".into()
                         }
                     }
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "FOO".into()
                     }
@@ -1000,7 +1000,7 @@ fn test_rustc_demangle_thinlto() {
                         name: "backtrace".into()
                     })
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "foo".into()
                     }
@@ -1035,31 +1035,31 @@ fn test_rustc_demangle_extra_suffix() {
                                         name: "rand".into()
                                     })
                                     .into(),
-                                    identifier: Identifier {
+                                    name: Identifier {
                                         disambiguator: 0,
                                         name: "rngs".into()
                                     }
                                 }
                                 .into(),
-                                identifier: Identifier {
+                                name: Identifier {
                                     disambiguator: 0,
                                     name: "adapter".into()
                                 }
                             }
                             .into(),
-                            identifier: Identifier {
+                            name: Identifier {
                                 disambiguator: 0,
                                 name: "reseeding".into()
                             }
                         }
                         .into(),
-                        identifier: Identifier {
+                        name: Identifier {
                             disambiguator: 0,
                             name: "fork".into()
                         }
                     }
                     .into(),
-                    identifier: Identifier {
+                    name: Identifier {
                         disambiguator: 0,
                         name: "FORK_HANDLER_REGISTERED".into()
                     }

@@ -77,16 +77,16 @@ pub enum Path<'a> {
     TraitImpl {
         impl_path: ImplPath<'a>,
         type_: Rc<Type<'a>>,
-        path: Rc<Path<'a>>,
+        trait_: Rc<Path<'a>>,
     },
     TraitDefinition {
         type_: Rc<Type<'a>>,
-        path: Rc<Path<'a>>,
+        trait_: Rc<Path<'a>>,
     },
     Nested {
         namespace: u8,
         path: Rc<Path<'a>>,
-        identifier: Identifier<'a>,
+        name: Identifier<'a>,
     },
     GenericArgs {
         path: Rc<Path<'a>>,
@@ -106,14 +106,20 @@ impl<'a> Path<'a> {
             preceded(tag("C"), Identifier::parse).map(Self::CrateRoot),
             preceded(tag("M"), ImplPath::parse.and(Type::parse))
                 .map(|(impl_path, type_)| Self::InherentImpl { impl_path, type_ }),
-            preceded(tag("X"), tuple((ImplPath::parse, Type::parse, Path::parse)))
-                .map(|(impl_path, type_, path)| Self::TraitImpl { impl_path, type_, path }),
-            preceded(tag("Y"), Type::parse.and(Path::parse)).map(|(type_, path)| Self::TraitDefinition { type_, path }),
+            preceded(tag("X"), tuple((ImplPath::parse, Type::parse, Path::parse))).map(|(impl_path, type_, trait_)| {
+                Self::TraitImpl {
+                    impl_path,
+                    type_,
+                    trait_,
+                }
+            }),
+            preceded(tag("Y"), Type::parse.and(Path::parse))
+                .map(|(type_, trait_)| Self::TraitDefinition { type_, trait_ }),
             preceded(tag("N"), tuple((take(1_usize), Path::parse, Identifier::parse))).map(
-                |(namespace, path, identifier)| Self::Nested {
+                |(namespace, path, name)| Self::Nested {
                     namespace: namespace.data[0],
                     path,
-                    identifier,
+                    name,
                 },
             ),
             delimited(tag("I"), Path::parse.and(many0(GenericArg::parse)), tag("E"))
@@ -265,8 +271,8 @@ pub enum Type<'a> {
     Array(Rc<Type<'a>>, Rc<Const<'a>>),
     Slice(Rc<Type<'a>>),
     Tuple(Vec<Rc<Type<'a>>>),
-    Ref { lifetime: Option<u64>, type_: Rc<Type<'a>> },
-    RefMut { lifetime: Option<u64>, type_: Rc<Type<'a>> },
+    Ref { lifetime: u64, type_: Rc<Type<'a>> },
+    RefMut { lifetime: u64, type_: Rc<Type<'a>> },
     PtrConst(Rc<Type<'a>>),
     PtrMut(Rc<Type<'a>>),
     Fn(FnSig<'a>),
@@ -277,7 +283,7 @@ impl<'a> Type<'a> {
     fn parse<'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<Self>> {
         use nom::branch::alt;
         use nom::bytes::complete::tag;
-        use nom::combinator::{map_opt, opt};
+        use nom::combinator::map_opt;
         use nom::multi::many0;
         use nom::sequence::{delimited, preceded};
 
@@ -287,9 +293,9 @@ impl<'a> Type<'a> {
             preceded(tag("A"), Type::parse.and(Const::parse)).map(|(type_, length)| Self::Array(type_, length)),
             preceded(tag("S"), Type::parse).map(Self::Slice),
             delimited(tag("T"), many0(Type::parse), tag("E")).map(Self::Tuple),
-            preceded(tag("R"), opt(Lifetime::parse).and(Type::parse))
+            preceded(tag("R"), opt_u64(Lifetime::parse).and(Type::parse))
                 .map(|(lifetime, type_)| Self::Ref { lifetime, type_ }),
-            preceded(tag("Q"), opt(Lifetime::parse).and(Type::parse))
+            preceded(tag("Q"), opt_u64(Lifetime::parse).and(Type::parse))
                 .map(|(lifetime, type_)| Self::RefMut { lifetime, type_ }),
             preceded(tag("P"), Type::parse).map(Self::PtrConst),
             preceded(tag("O"), Type::parse).map(Self::PtrMut),
@@ -375,7 +381,7 @@ impl BasicType {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FnSig<'a> {
-    pub binder: u64,
+    pub bound_lifetimes: u64,
     pub is_unsafe: bool,
     pub abi: Option<Abi<'a>>,
     pub argument_types: Vec<Rc<Type<'a>>>,
@@ -396,8 +402,8 @@ impl<'a> FnSig<'a> {
             terminated(many0(Type::parse), tag("E")),
             Type::parse,
         ))
-        .map(|(binder, is_unsafe, abi, argument_types, return_type)| Self {
-            binder,
+        .map(|(bound_lifetimes, is_unsafe, abi, argument_types, return_type)| Self {
+            bound_lifetimes,
             is_unsafe,
             abi,
             argument_types,
@@ -426,7 +432,7 @@ impl<'a> Abi<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynBounds<'a> {
-    pub binder: u64,
+    pub bound_lifetimes: u64,
     pub dyn_traits: Vec<DynTrait<'a>>,
 }
 
@@ -438,7 +444,10 @@ impl<'a> DynBounds<'a> {
 
         opt_u64(Binder::parse)
             .and(terminated(many0(DynTrait::parse), tag("E")))
-            .map(|(binder, dyn_traits)| Self { binder, dyn_traits })
+            .map(|(bound_lifetimes, dyn_traits)| Self {
+                bound_lifetimes,
+                dyn_traits,
+            })
             .parse(context)
     }
 }
@@ -465,7 +474,7 @@ impl<'a> DynTrait<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynTraitAssocBinding<'a> {
-    pub identifier: Cow<'a, str>,
+    pub name: Cow<'a, str>,
     pub type_: Rc<Type<'a>>,
 }
 
@@ -475,7 +484,7 @@ impl<'a> DynTraitAssocBinding<'a> {
         use nom::sequence::preceded;
 
         preceded(tag("p"), UndisambiguatedIdentifier::parse.and(Type::parse))
-            .map(|(identifier, type_)| Self { identifier, type_ })
+            .map(|(name, type_)| Self { name, type_ })
             .parse(context)
     }
 }
