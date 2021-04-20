@@ -32,13 +32,13 @@ fn opt_u64<I: Clone, E: ParseError<I>>(parser: impl Parser<I, u64, E>) -> impl F
 // - https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html.
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct SymbolName<'a> {
+pub struct Symbol<'a> {
     pub version: Option<u64>,
     pub path: Rc<Path<'a>>,
     pub instantiating_crate: Option<Rc<Path<'a>>>,
 }
 
-impl<'a> SymbolName<'a> {
+impl<'a> Symbol<'a> {
     fn parse<'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Self> {
         use nom::combinator::opt;
         use nom::sequence::tuple;
@@ -88,7 +88,7 @@ pub enum Path<'a> {
         path: Rc<Path<'a>>,
         name: Identifier<'a>,
     },
-    GenericArgs {
+    Generic {
         path: Rc<Path<'a>>,
         generic_args: Vec<GenericArg<'a>>,
     },
@@ -123,7 +123,7 @@ impl<'a> Path<'a> {
                 },
             ),
             delimited(tag("I"), Path::parse.and(many0(GenericArg::parse)), tag("E"))
-                .map(|(path, generic_args)| Self::GenericArgs { path, generic_args }),
+                .map(|(path, generic_args)| Self::Generic { path, generic_args }),
         ))
         .map(|result| {
             let result = Rc::new(result);
