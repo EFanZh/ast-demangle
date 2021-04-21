@@ -9,6 +9,7 @@ use std::rc::Rc;
 use std::str;
 
 mod context;
+pub mod demangle;
 
 #[cfg(test)]
 mod tests;
