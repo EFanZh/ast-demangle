@@ -16,8 +16,8 @@ fn make_err<T>(input: &str, error_kind: ErrorKind) -> IResult<&str, T> {
 
 fn simplify_result<'a, 'b, T>(result: IResult<Context<'a, 'b>, T>) -> IResult<&'a str, T> {
     result
-        .map(|(rest, result)| (str::from_utf8(rest.data).unwrap(), result))
-        .map_err(|e| e.map(|e| Error::new(str::from_utf8(e.input.data).unwrap(), e.code)))
+        .map(|(rest, result)| (rest.data, result))
+        .map_err(|e| e.map(|e| Error::new(e.input.data, e.code)))
 }
 
 fn id(name: &str) -> Identifier {
@@ -30,11 +30,9 @@ fn id(name: &str) -> Identifier {
 #[test]
 fn test_parse_undisambiguated_identifier() {
     fn parse(input: &str) -> IResult<&str, Cow<str>> {
-        let back_ref_table = RefCell::default();
-
         simplify_result(UndisambiguatedIdentifier::parse(Context::new(
-            input.as_bytes(),
-            &back_ref_table,
+            input,
+            &RefCell::default(),
         )))
     }
 
@@ -54,7 +52,7 @@ fn test_abi() {
     fn parse(input: &str) -> IResult<&str, Abi> {
         let back_ref_table = RefCell::default();
 
-        simplify_result(Abi::parse(Context::new(input.as_bytes(), &back_ref_table)))
+        simplify_result(Abi::parse(Context::new(input, &back_ref_table)))
     }
 
     assert_eq!(parse(""), make_err("", ErrorKind::Digit));
@@ -66,9 +64,7 @@ fn test_abi() {
 #[test]
 fn test_parse_decimal_number() {
     fn parse(input: &str) -> IResult<&str, u64> {
-        let back_ref_table = RefCell::default();
-
-        simplify_result(DecimalNumber::parse(Context::new(input.as_bytes(), &back_ref_table)))
+        simplify_result(DecimalNumber::parse(Context::new(input, &RefCell::default())))
     }
 
     assert_eq!(parse(""), make_err("", ErrorKind::Digit));
@@ -96,9 +92,7 @@ fn test_parse_decimal_number() {
 #[test]
 fn test_parse_base_62_number() {
     fn parse(input: &str) -> IResult<&str, u64> {
-        let back_ref_table = RefCell::default();
-
-        simplify_result(Base62Number::parse(Context::new(input.as_bytes(), &back_ref_table)))
+        simplify_result(Base62Number::parse(Context::new(input, &RefCell::default())))
     }
 
     assert_eq!(parse("_"), Ok(("", 0)));
@@ -110,9 +104,7 @@ fn test_parse_base_62_number() {
 }
 
 fn parse_symbol(input: &str) -> IResult<&str, Symbol> {
-    let back_ref_table = RefCell::default();
-
-    simplify_result(Symbol::parse(Context::new(input.as_bytes(), &back_ref_table)))
+    simplify_result(Symbol::parse(Context::new(input, &RefCell::default())))
 }
 
 #[test]
@@ -435,7 +427,7 @@ fn test_rustc_demangle_const_generics_usize_123() {
                         GenericArg::Const(
                             Const::Data {
                                 type_: Type::Basic(BasicType::Usize).into(),
-                                data: b"7b"
+                                data: "7b"
                             }
                             .into()
                         )
@@ -483,7 +475,7 @@ fn test_rustc_demangle_const_generics_u8_11() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::U8).into(),
-                                    data: b"b"
+                                    data: "b"
                                 }
                                 .into()
                             )]
@@ -534,7 +526,7 @@ fn test_rustc_demangle_const_generics_i16_152() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::I16).into(),
-                                    data: b"98"
+                                    data: "98"
                                 }
                                 .into()
                             )]
@@ -585,7 +577,7 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::I8).into(),
-                                    data: b"nb"
+                                    data: "nb"
                                 }
                                 .into()
                             )]
@@ -636,7 +628,7 @@ fn test_rustc_demangle_const_generics_bool_false() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::Bool).into(),
-                                    data: b"0"
+                                    data: "0"
                                 }
                                 .into()
                             )]
@@ -687,7 +679,7 @@ fn test_rustc_demangle_const_generics_bool_true() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::Bool).into(),
-                                    data: b"1"
+                                    data: "1"
                                 }
                                 .into()
                             )]
@@ -738,7 +730,7 @@ fn test_rustc_demangle_const_generics_char_v() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::Char).into(),
-                                    data: b"76"
+                                    data: "76"
                                 }
                                 .into()
                             )]
@@ -789,7 +781,7 @@ fn test_rustc_demangle_const_generics_char_lf() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::Char).into(),
-                                    data: b"a"
+                                    data: "a"
                                 }
                                 .into()
                             )]
@@ -840,7 +832,7 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                             generic_args: vec![GenericArg::Const(
                                 Const::Data {
                                     type_: Type::Basic(BasicType::Char).into(),
-                                    data: b"2202"
+                                    data: "2202"
                                 }
                                 .into()
                             )]

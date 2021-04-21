@@ -53,12 +53,10 @@ impl<'a> Symbol<'a> {
     }
 
     pub fn parse_from_str(input: &'a str) -> Result<Self, Box<dyn Error>> {
-        let input = input.as_bytes();
-
         let input = input
-            .strip_prefix(b"_R")
-            .or_else(|| input.strip_prefix(b"R"))
-            .or_else(|| input.strip_prefix(b"__R"))
+            .strip_prefix("_R")
+            .or_else(|| input.strip_prefix("R"))
+            .or_else(|| input.strip_prefix("__R"))
             .unwrap_or(input);
 
         Self::parse(Context::new(input, &RefCell::default()))
@@ -117,7 +115,7 @@ impl<'a> Path<'a> {
                 .map(|(type_, trait_)| Self::TraitDefinition { type_, trait_ }),
             preceded(tag("N"), tuple((take(1_usize), Path::parse, Identifier::parse))).map(
                 |(namespace, path, name)| Self::Nested {
-                    namespace: namespace.data[0],
+                    namespace: namespace.data.as_bytes()[0],
                     path,
                     name,
                 },
@@ -202,7 +200,7 @@ impl UndisambiguatedIdentifier {
         .flat_map(|(is_punycode, length, _)| {
             map_opt(take(length), move |name: Context<'a, 'b>| {
                 Some(if is_punycode {
-                    let mut buffer = name.data.to_vec();
+                    let mut buffer = name.data.as_bytes().to_vec();
 
                     if let Some(c) = buffer.iter_mut().rfind(|&&mut c| c == b'_') {
                         *c = b'-';
@@ -210,7 +208,7 @@ impl UndisambiguatedIdentifier {
 
                     Cow::Owned(punycode::decode(str::from_utf8(&buffer).ok()?).ok()?)
                 } else {
-                    Cow::Borrowed(str::from_utf8(name.data).ok()?)
+                    Cow::Borrowed(name.data)
                 })
             })
         })
@@ -351,7 +349,7 @@ impl BasicType {
         use nom::bytes::complete::take;
         use nom::combinator::map_opt;
 
-        map_opt(take(1_usize), |s: Context<'a, 'b>| match s.data[0] {
+        map_opt(take(1_usize), |s: Context<'a, 'b>| match s.data.as_bytes()[0] {
             b'a' => Some(Self::I8),
             b'b' => Some(Self::Bool),
             b'c' => Some(Self::Char),
@@ -491,7 +489,7 @@ impl<'a> DynTraitAssocBinding<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Const<'a> {
-    Data { type_: Rc<Type<'a>>, data: &'a [u8] },
+    Data { type_: Rc<Type<'a>>, data: &'a str },
     Placeholder,
 }
 
@@ -538,12 +536,12 @@ impl Base62Number {
         use nom::sequence::terminated;
 
         map_opt(terminated(alphanumeric0, tag("_")), |num: Context| {
-            let num = if num.data.is_empty() {
-                0
+            if num.data.is_empty() {
+                Some(0)
             } else {
                 let mut value = 0_u64;
 
-                for c in num.data {
+                for c in num.data.bytes() {
                     let digit = match c {
                         b'0'..=b'9' => c - b'0',
                         b'a'..=b'z' => 10 + (c - b'a'),
@@ -554,10 +552,8 @@ impl Base62Number {
                     value = value.checked_add(digit.into())?;
                 }
 
-                value.checked_add(1)?
-            };
-
-            Some(num)
+                value.checked_add(1)
+            }
         })
         .parse(context)
     }
@@ -585,9 +581,6 @@ impl DecimalNumber {
         use nom::character::complete::digit1;
         use nom::combinator::map_opt;
 
-        map_opt(tag("0").or(digit1), |num: Context<'a, 'b>| {
-            str::from_utf8(num.data).ok()?.parse().ok()
-        })
-        .parse(context)
+        map_opt(tag("0").or(digit1), |num: Context<'a, 'b>| num.data.parse().ok()).parse(context)
     }
 }

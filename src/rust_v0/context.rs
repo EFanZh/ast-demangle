@@ -17,12 +17,12 @@ pub struct BackRefTable<'a> {
 #[derive(Clone, Copy)]
 pub struct Context<'a, 'b> {
     pub index: usize,
-    pub data: &'a [u8],
+    pub data: &'a str,
     pub back_ref_table: &'b RefCell<BackRefTable<'a>>,
 }
 
 impl<'a, 'b> Context<'a, 'b> {
-    pub fn new(data: &'a [u8], back_ref_table: &'b RefCell<BackRefTable<'a>>) -> Self {
+    pub fn new(data: &'a str, back_ref_table: &'b RefCell<BackRefTable<'a>>) -> Self {
         Self {
             index: 0,
             data,
@@ -39,7 +39,7 @@ impl<'a, 'b> PartialEq for Context<'a, 'b> {
 
 impl<'a, 'b, T> Compare<T> for Context<'a, 'b>
 where
-    &'a [u8]: Compare<T>,
+    &'a str: Compare<T>,
 {
     fn compare(&self, t: T) -> nom::CompareResult {
         Compare::compare(&self.data, t)
@@ -51,9 +51,9 @@ where
 }
 
 impl<'a, 'b> InputIter for Context<'a, 'b> {
-    type Item = <&'a [u8] as InputIter>::Item;
-    type Iter = <&'a [u8] as InputIter>::Iter;
-    type IterElem = <&'a [u8] as InputIter>::IterElem;
+    type Item = <&'a str as InputIter>::Item;
+    type Iter = <&'a str as InputIter>::Iter;
+    type IterElem = <&'a str as InputIter>::IterElem;
 
     fn iter_indices(&self) -> Self::Iter {
         InputIter::iter_indices(&self.data)
@@ -104,7 +104,7 @@ impl<'a, 'b> InputTake for Context<'a, 'b> {
 }
 
 impl<'a, 'b> InputTakeAtPosition for Context<'a, 'b> {
-    type Item = <&'a [u8] as InputTakeAtPosition>::Item;
+    type Item = <&'a str as InputTakeAtPosition>::Item;
 
     fn split_at_position<P, E: ParseError<Self>>(&self, predicate: P) -> IResult<Self, Self, E>
     where
