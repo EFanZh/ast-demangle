@@ -282,7 +282,7 @@ impl<'a> Type<'a> {
     fn parse<'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<Self>> {
         use nom::branch::alt;
         use nom::bytes::complete::tag;
-        use nom::combinator::map_opt;
+        use nom::combinator::{map_opt, opt};
         use nom::multi::many0;
         use nom::sequence::{delimited, preceded};
 
@@ -292,10 +292,16 @@ impl<'a> Type<'a> {
             preceded(tag("A"), Type::parse.and(Const::parse)).map(|(type_, length)| Self::Array(type_, length)),
             preceded(tag("S"), Type::parse).map(Self::Slice),
             delimited(tag("T"), many0(Type::parse), tag("E")).map(Self::Tuple),
-            preceded(tag("R"), opt_u64(Lifetime::parse).and(Type::parse))
-                .map(|(lifetime, type_)| Self::Ref { lifetime, type_ }),
-            preceded(tag("Q"), opt_u64(Lifetime::parse).and(Type::parse))
-                .map(|(lifetime, type_)| Self::RefMut { lifetime, type_ }),
+            preceded(
+                tag("R"),
+                opt(Lifetime::parse).map(Option::unwrap_or_default).and(Type::parse),
+            )
+            .map(|(lifetime, type_)| Self::Ref { lifetime, type_ }),
+            preceded(
+                tag("Q"),
+                opt(Lifetime::parse).map(Option::unwrap_or_default).and(Type::parse),
+            )
+            .map(|(lifetime, type_)| Self::RefMut { lifetime, type_ }),
             preceded(tag("P"), Type::parse).map(Self::PtrConst),
             preceded(tag("O"), Type::parse).map(Self::PtrMut),
             preceded(tag("F"), FnSig::parse).map(Self::Fn),

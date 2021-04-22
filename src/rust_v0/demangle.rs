@@ -157,13 +157,15 @@ fn write_type(type_: &Type, f: &mut Formatter, bound_lifetime_depth: u64) -> fmt
         }
         Type::Tuple(tuple_types) => {
             f.write_str("(")?;
+
             write_separated_list(
                 tuple_types,
                 f,
                 |type_, f| write_type(type_, f, bound_lifetime_depth),
                 ", ",
             )?;
-            f.write_str(")")
+
+            f.write_str(if tuple_types.len() == 1 { ",)" } else { ")" })
         }
         Type::Ref { lifetime, type_ } => {
             f.write_char('&')?;
@@ -188,11 +190,11 @@ fn write_type(type_: &Type, f: &mut Formatter, bound_lifetime_depth: u64) -> fmt
             write_type(type_, f, bound_lifetime_depth)
         }
         Type::PtrConst(type_) => {
-            f.write_str("*const")?;
+            f.write_str("*const ")?;
             write_type(type_, f, bound_lifetime_depth)
         }
         Type::PtrMut(type_) => {
-            f.write_str("*mut")?;
+            f.write_str("*mut ")?;
             write_type(type_, f, bound_lifetime_depth)
         }
         Type::Fn(fn_sig) => write_fn_sig(fn_sig, f, bound_lifetime_depth),
@@ -245,6 +247,7 @@ fn write_fn_sig(fn_sig: &FnSig, f: &mut Formatter, bound_lifetime_depth: u64) ->
     }
 
     if let Some(abi) = &fn_sig.abi {
+        f.write_str("extern ")?;
         write_abi(abi, f)?;
         f.write_char(' ')?;
     }
@@ -301,40 +304,44 @@ fn write_dyn_bounds(dyn_bounds: &DynBounds, f: &mut Formatter, bound_lifetime_de
 }
 
 fn write_dyn_trait(dyn_trait: &DynTrait, f: &mut Formatter, bound_lifetime_depth: u64) -> fmt::Result {
-    if let Path::Generic { path, generic_args } = dyn_trait.path.as_ref() {
-        write_path(path, f, bound_lifetime_depth, false)?;
-        f.write_char('<')?;
-
-        write_separated_list(
-            generic_args
-                .iter()
-                .map(Ok)
-                .chain(dyn_trait.dyn_trait_assoc_bindings.iter().map(Err)),
-            f,
-            |value, f| match value {
-                Ok(generic_arg) => write_generic_arg(generic_arg, f, bound_lifetime_depth),
-                Err(dyn_trait_assoc_binding) => {
-                    write_dyn_trait_assoc_binding(dyn_trait_assoc_binding, f, bound_lifetime_depth)
-                }
-            },
-            ", ",
-        )?;
+    if dyn_trait.dyn_trait_assoc_bindings.is_empty() {
+        write_path(&dyn_trait.path, f, bound_lifetime_depth, false)
     } else {
-        write_path(&dyn_trait.path, f, bound_lifetime_depth, false)?;
+        if let Path::Generic { path, generic_args } = dyn_trait.path.as_ref() {
+            write_path(path, f, bound_lifetime_depth, false)?;
+            f.write_char('<')?;
 
-        f.write_char('<')?;
+            write_separated_list(
+                generic_args
+                    .iter()
+                    .map(Ok)
+                    .chain(dyn_trait.dyn_trait_assoc_bindings.iter().map(Err)),
+                f,
+                |value, f| match value {
+                    Ok(generic_arg) => write_generic_arg(generic_arg, f, bound_lifetime_depth),
+                    Err(dyn_trait_assoc_binding) => {
+                        write_dyn_trait_assoc_binding(dyn_trait_assoc_binding, f, bound_lifetime_depth)
+                    }
+                },
+                ", ",
+            )?;
+        } else {
+            write_path(&dyn_trait.path, f, bound_lifetime_depth, false)?;
 
-        write_separated_list(
-            &dyn_trait.dyn_trait_assoc_bindings,
-            f,
-            |dyn_trait_assoc_binding, f| {
-                write_dyn_trait_assoc_binding(dyn_trait_assoc_binding, f, bound_lifetime_depth)
-            },
-            ", ",
-        )?;
+            f.write_char('<')?;
+
+            write_separated_list(
+                &dyn_trait.dyn_trait_assoc_bindings,
+                f,
+                |dyn_trait_assoc_binding, f| {
+                    write_dyn_trait_assoc_binding(dyn_trait_assoc_binding, f, bound_lifetime_depth)
+                },
+                ", ",
+            )?;
+        }
+
+        f.write_char('>')
     }
-
-    f.write_char('>')
 }
 
 fn write_dyn_trait_assoc_binding(
