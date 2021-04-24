@@ -237,10 +237,12 @@ fn write_basic_type(basic_type: BasicType, f: &mut Formatter) -> fmt::Result {
     })
 }
 
-fn write_fn_sig(fn_sig: &FnSig, f: &mut Formatter, bound_lifetime_depth: u64) -> fmt::Result {
+fn write_fn_sig(fn_sig: &FnSig, f: &mut Formatter, mut bound_lifetime_depth: u64) -> fmt::Result {
     if fn_sig.bound_lifetimes != 0 {
         write_binder(fn_sig.bound_lifetimes, f, bound_lifetime_depth)?;
     }
+
+    bound_lifetime_depth += fn_sig.bound_lifetimes;
 
     if fn_sig.is_unsafe {
         f.write_str("unsafe ")?;
@@ -290,15 +292,17 @@ fn write_abi(abi: &Abi, f: &mut Formatter) -> fmt::Result {
     f.write_char('"')
 }
 
-fn write_dyn_bounds(dyn_bounds: &DynBounds, f: &mut Formatter, bound_lifetime_depth: u64) -> fmt::Result {
+fn write_dyn_bounds(dyn_bounds: &DynBounds, f: &mut Formatter, mut bound_lifetime_depth: u64) -> fmt::Result {
     f.write_str("dyn ")?;
 
     write_binder(dyn_bounds.bound_lifetimes, f, bound_lifetime_depth)?;
 
+    bound_lifetime_depth += dyn_bounds.bound_lifetimes;
+
     write_separated_list(
         &dyn_bounds.dyn_traits,
         f,
-        |dyn_trait, f| write_dyn_trait(dyn_trait, f, bound_lifetime_depth + dyn_bounds.bound_lifetimes),
+        |dyn_trait, f| write_dyn_trait(dyn_trait, f, bound_lifetime_depth),
         " + ",
     )
 }
