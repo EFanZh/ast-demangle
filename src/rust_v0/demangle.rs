@@ -6,8 +6,9 @@ use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter, Write};
 use std::str;
 
-#[derive(Clone, Copy)]
-enum DemangleStyle {
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum Style {
+    Short,
     Normal,
     Long,
 }
@@ -43,16 +44,11 @@ fn display_separated_list(values: impl IntoIterator<Item = impl Display>, separa
     })
 }
 
-fn display_path<'a>(
-    path: &'a Path,
-    style: DemangleStyle,
-    bound_lifetime_depth: u64,
-    in_value: bool,
-) -> impl Display + 'a {
+fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
     display_fn(move |f| match path {
         Path::CrateRoot(name) => match style {
-            DemangleStyle::Normal => f.write_str(&name.name),
-            DemangleStyle::Long => {
+            Style::Short | Style::Normal => f.write_str(&name.name),
+            Style::Long => {
                 write!(f, "{}[{:x}]", &name.name, name.disambiguator)
             }
         },
@@ -70,34 +66,52 @@ fn display_path<'a>(
                 display_path(path, style, bound_lifetime_depth, false)
             )
         }
-        Path::Nested { namespace, path, name } => {
-            display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
+        Path::Nested { namespace, path, name } => match namespace {
+            b'A'..=b'Z' => {
+                display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
 
-            match namespace {
-                b'A'..=b'Z' => {
-                    f.write_str("::{")?;
+                f.write_str("::{")?;
 
-                    match namespace {
-                        b'C' => f.write_str("closure")?,
-                        b'S' => f.write_str("shim")?,
-                        _ => f.write_char(char::from(*namespace))?,
-                    }
-
-                    if !name.name.is_empty() {
-                        write!(f, ":{}", name.name)?;
-                    }
-
-                    write!(f, "#{}}}", name.disambiguator)
+                match namespace {
+                    b'C' => f.write_str("closure")?,
+                    b'S' => f.write_str("shim")?,
+                    _ => f.write_char(char::from(*namespace))?,
                 }
-                _ => {
+
+                if !name.name.is_empty() {
+                    write!(f, ":{}", name.name)?;
+                }
+
+                write!(f, "#{}}}", name.disambiguator)
+            }
+            b'a'..=b'z' => {
+                let display_parent = match style {
+                    Style::Short => {
+                        matches!(
+                            path.as_ref(),
+                            Path::InherentImpl { .. }
+                                | Path::TraitImpl { .. }
+                                | Path::TraitDefinition { .. }
+                                | Path::Generic { .. }
+                        )
+                    }
+                    Style::Normal | Style::Long => true,
+                };
+
+                if display_parent {
+                    display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
+
                     if name.name.is_empty() {
                         Ok(())
                     } else {
                         write!(f, "::{}", name.name)
                     }
+                } else {
+                    name.name.fmt(f)
                 }
             }
-        }
+            _ => Err(fmt::Error),
+        },
         Path::Generic { path, generic_args } => {
             display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
 
@@ -135,11 +149,7 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
     })
 }
 
-fn display_generic_arg<'a>(
-    generic_arg: &'a GenericArg,
-    style: DemangleStyle,
-    bound_lifetime_depth: u64,
-) -> impl Display + 'a {
+fn display_generic_arg<'a>(generic_arg: &'a GenericArg, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| match generic_arg {
         GenericArg::Lifetme(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
         GenericArg::Type(type_) => display_type(type_, style, bound_lifetime_depth).fmt(f),
@@ -166,7 +176,7 @@ fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Displ
     })
 }
 
-fn display_type<'a>(type_: &'a Type, style: DemangleStyle, bound_lifetime_depth: u64) -> impl Display + 'a {
+fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| match type_ {
         Type::Basic(basic_type) => display_basic_type(*basic_type).fmt(f),
         Type::Named(path) => display_path(path, style, bound_lifetime_depth, false).fmt(f),
@@ -265,7 +275,7 @@ fn display_basic_type(basic_type: BasicType) -> impl Display {
     })
 }
 
-fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: DemangleStyle, bound_lifetime_depth: u64) -> impl Display + 'a {
+fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
         display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth).fmt(f)?;
 
@@ -324,11 +334,7 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
     })
 }
 
-fn display_dyn_bounds<'a>(
-    dyn_bounds: &'a DynBounds,
-    style: DemangleStyle,
-    bound_lifetime_depth: u64,
-) -> impl Display + 'a {
+fn display_dyn_bounds<'a>(dyn_bounds: &'a DynBounds, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
         let inner_bound_lifetime_depth = bound_lifetime_depth + dyn_bounds.bound_lifetimes;
 
@@ -348,11 +354,7 @@ fn display_dyn_bounds<'a>(
     })
 }
 
-fn display_dyn_trait<'a>(
-    dyn_trait: &'a DynTrait,
-    style: DemangleStyle,
-    bound_lifetime_depth: u64,
-) -> impl Display + 'a {
+fn display_dyn_trait<'a>(dyn_trait: &'a DynTrait, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
         if dyn_trait.dyn_trait_assoc_bindings.is_empty() {
             display_path(&dyn_trait.path, style, bound_lifetime_depth, false).fmt(f)
@@ -400,7 +402,7 @@ fn display_dyn_trait<'a>(
 
 fn display_dyn_trait_assoc_binding<'a>(
     dyn_trait_assoc_binding: &'a DynTraitAssocBinding,
-    style: DemangleStyle,
+    style: Style,
     bound_lifetime_depth: u64,
 ) -> impl Display + 'a {
     display_fn(move |f| {
@@ -423,7 +425,7 @@ fn display_u64(num_str: &str) -> impl Display + '_ {
     })
 }
 
-fn display_const<'a>(const_: &'a Const, style: DemangleStyle, bound_lifetime_depth: u64) -> impl Display + 'a {
+fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| match const_ {
         Const::Data { type_, data } => {
             if let Type::Basic(basic_type) = type_.as_ref() {
@@ -461,8 +463,8 @@ fn display_const<'a>(const_: &'a Const, style: DemangleStyle, bound_lifetime_dep
                 }?;
 
                 match style {
-                    DemangleStyle::Normal => Ok(()),
-                    DemangleStyle::Long => {
+                    Style::Short | Style::Normal => Ok(()),
+                    Style::Long => {
                         write!(f, ": {}", display_type(type_, style, bound_lifetime_depth))
                     }
                 }
@@ -474,61 +476,72 @@ fn display_const<'a>(const_: &'a Const, style: DemangleStyle, bound_lifetime_dep
     })
 }
 
+impl<'a> Symbol<'a> {
+    #[must_use]
+    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+        self.path.demangle(style)
+    }
+}
+
 impl<'a> Display for Symbol<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.path.fmt(f)
+        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+            .fmt(f)
+    }
+}
+
+impl<'a> Path<'a> {
+    #[must_use]
+    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+        display_path(self, style, 0, true)
     }
 }
 
 impl<'a> Display for Path<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        display_path(
-            self,
-            if f.alternate() {
-                DemangleStyle::Normal
-            } else {
-                DemangleStyle::Long
-            },
-            0,
-            true,
-        )
-        .fmt(f)
+        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+            .fmt(f)
+    }
+}
+
+impl<'a> Type<'a> {
+    #[must_use]
+    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+        display_type(self, style, 0)
     }
 }
 
 impl<'a> Display for Type<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        display_type(
-            self,
-            if f.alternate() {
-                DemangleStyle::Normal
-            } else {
-                DemangleStyle::Long
-            },
-            0,
-        )
-        .fmt(f)
+        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+            .fmt(f)
+    }
+}
+
+impl BasicType {
+    #[must_use]
+    pub fn demangle(self) -> impl Display {
+        display_basic_type(self)
     }
 }
 
 impl Display for BasicType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        display_basic_type(*self).fmt(f)
+        self.demangle().fmt(f)
+    }
+}
+
+impl<'a> FnSig<'a> {
+    #[must_use]
+    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+        display_fn_sig(self, style, 0)
     }
 }
 
 impl<'a> Display for FnSig<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        display_fn_sig(
-            self,
-            if f.alternate() {
-                DemangleStyle::Normal
-            } else {
-                DemangleStyle::Long
-            },
-            0,
-        )
-        .fmt(f)
+        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+            .fmt(f)
     }
 }
 
