@@ -1,5 +1,5 @@
 use crate::rust_v0::{
-    Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Symbol, Type,
+    Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier, Path, Symbol, Type,
 };
 use std::cell::Cell;
 use std::convert::TryFrom;
@@ -154,20 +154,16 @@ fn display_generic_arg<'a>(generic_arg: &'a GenericArg, style: Style, bound_life
 
 fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Display {
     display_fn(move |f| {
-        if bound_lifetimes == 0 {
-            Ok(())
-        } else {
-            write!(
-                f,
-                "for<{}> ",
-                display_separated_list(
-                    (1..=bound_lifetimes)
-                        .rev()
-                        .map(|i| display_lifetime(i, bound_lifetime_depth + bound_lifetimes)),
-                    ", "
-                )
+        write!(
+            f,
+            "for<{}>",
+            display_separated_list(
+                (1..=bound_lifetimes)
+                    .rev()
+                    .map(|i| display_lifetime(i, bound_lifetime_depth + bound_lifetimes)),
+                ", "
             )
-        }
+        )
     })
 }
 
@@ -200,28 +196,22 @@ fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) ->
             )
         }
         Type::Ref { lifetime, type_ } => {
-            if *lifetime == 0 {
-                write!(f, "&{}", display_type(type_, style, bound_lifetime_depth))
-            } else {
-                write!(
-                    f,
-                    "&{} {}",
-                    display_lifetime(*lifetime, bound_lifetime_depth),
-                    display_type(type_, style, bound_lifetime_depth)
-                )
+            f.write_char('&')?;
+
+            if *lifetime != 0 {
+                write!(f, "{} ", display_lifetime(*lifetime, bound_lifetime_depth))?;
             }
+
+            display_type(type_, style, bound_lifetime_depth).fmt(f)
         }
         Type::RefMut { lifetime, type_ } => {
-            if *lifetime == 0 {
-                write!(f, "&mut {}", display_type(type_, style, bound_lifetime_depth))
-            } else {
-                write!(
-                    f,
-                    "&mut {} {}",
-                    display_lifetime(*lifetime, bound_lifetime_depth),
-                    display_type(type_, style, bound_lifetime_depth)
-                )
+            f.write_char('&')?;
+
+            if *lifetime != 0 {
+                write!(f, "{} ", display_lifetime(*lifetime, bound_lifetime_depth))?;
             }
+
+            write!(f, "mut {}", display_type(type_, style, bound_lifetime_depth))
         }
         Type::PtrConst(type_) => {
             write!(f, "*const {}", display_type(type_, style, bound_lifetime_depth))
@@ -272,7 +262,9 @@ fn display_basic_type(basic_type: BasicType) -> impl Display {
 
 fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
-        display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth).fmt(f)?;
+        if fn_sig.bound_lifetimes != 0 {
+            write!(f, "{} ", display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth))?;
+        }
 
         let bound_lifetime_depth = bound_lifetime_depth + fn_sig.bound_lifetimes;
 
@@ -301,7 +293,7 @@ fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64
         } else {
             write!(
                 f,
-                "-> {}",
+                " -> {}",
                 display_type(&fn_sig.return_type, style, bound_lifetime_depth)
             )
         }
@@ -331,21 +323,26 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
 
 fn display_dyn_bounds<'a>(dyn_bounds: &'a DynBounds, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
-        let inner_bound_lifetime_depth = bound_lifetime_depth + dyn_bounds.bound_lifetimes;
+        f.write_str("dyn ")?;
 
-        write!(
-            f,
-            "dyn {}{}",
-            display_binder(dyn_bounds.bound_lifetimes, bound_lifetime_depth),
-            display_separated_list(
-                dyn_bounds.dyn_traits.iter().map(move |dyn_trait| display_dyn_trait(
-                    dyn_trait,
-                    style,
-                    inner_bound_lifetime_depth
-                )),
-                " + "
-            )
+        if dyn_bounds.bound_lifetimes != 0 {
+            write!(
+                f,
+                "{} ",
+                display_binder(dyn_bounds.bound_lifetimes, bound_lifetime_depth)
+            )?;
+        }
+
+        let bound_lifetime_depth = bound_lifetime_depth + dyn_bounds.bound_lifetimes;
+
+        display_separated_list(
+            dyn_bounds
+                .dyn_traits
+                .iter()
+                .map(move |dyn_trait| display_dyn_trait(dyn_trait, style, bound_lifetime_depth)),
+            " + ",
         )
+        .fmt(f)
     })
 }
 
@@ -380,7 +377,8 @@ fn display_dyn_trait<'a>(dyn_trait: &'a DynTrait, style: Style, bound_lifetime_d
         } else {
             write!(
                 f,
-                "<{}>",
+                "{}<{}>",
+                display_path(&dyn_trait.path, style, bound_lifetime_depth, false),
                 display_separated_list(
                     dyn_trait
                         .dyn_trait_assoc_bindings
@@ -474,7 +472,7 @@ fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64)
 impl<'a> Symbol<'a> {
     #[must_use]
     pub fn demangle(&self, style: Style) -> impl Display + '_ {
-        self.path.demangle(style)
+        display_path(&self.path, style, 0, true)
     }
 }
 
@@ -488,11 +486,38 @@ impl<'a> Display for Symbol<'a> {
 impl<'a> Path<'a> {
     #[must_use]
     pub fn demangle(&self, style: Style) -> impl Display + '_ {
-        display_path(self, style, 0, true)
+        display_path(self, style, 0, false)
     }
 }
 
 impl<'a> Display for Path<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+            .fmt(f)
+    }
+}
+
+impl<'a> Identifier<'a> {
+    #[must_use]
+    pub fn demangle(&self) -> impl Display + '_ {
+        self.name.as_ref()
+    }
+}
+
+impl<'a> Display for Identifier<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.demangle().fmt(f)
+    }
+}
+
+impl<'a> GenericArg<'a> {
+    #[must_use]
+    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+        display_generic_arg(self, style, 0)
+    }
+}
+
+impl<'a> Display for GenericArg<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
@@ -534,6 +559,20 @@ impl<'a> FnSig<'a> {
 }
 
 impl<'a> Display for FnSig<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+            .fmt(f)
+    }
+}
+
+impl<'a> Const<'a> {
+    #[must_use]
+    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+        display_const(self, style, 0)
+    }
+}
+
+impl<'a> Display for Const<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
