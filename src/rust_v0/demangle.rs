@@ -85,20 +85,15 @@ fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_
                 write!(f, "#{}}}", name.disambiguator)
             }
             b'a'..=b'z' => {
-                let display_parent = match style {
-                    Style::Short => {
-                        matches!(
-                            path.as_ref(),
-                            Path::InherentImpl { .. }
-                                | Path::TraitImpl { .. }
-                                | Path::TraitDefinition { .. }
-                                | Path::Generic { .. }
-                        )
-                    }
-                    Style::Normal | Style::Long => true,
-                };
-
-                if display_parent {
+                if matches!(style, Style::Normal | Style::Long)
+                    || matches!(
+                        path.as_ref(),
+                        Path::InherentImpl { .. }
+                            | Path::TraitImpl { .. }
+                            | Path::TraitDefinition { .. }
+                            | Path::Generic { .. }
+                    )
+                {
                     display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
 
                     if name.name.is_empty() {
