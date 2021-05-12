@@ -616,22 +616,22 @@ mod tests {
             );
         }
 
-        check(0, 0, "");
-        check(0, 1, "");
-        check(0, 2, "");
+        check(0, 0, "for<>");
+        check(0, 1, "for<>");
+        check(0, 2, "for<>");
 
-        check(1, 0, "for<'a> ");
-        check(1, 1, "for<'b> ");
-        check(1, 2, "for<'c> ");
+        check(1, 0, "for<'a>");
+        check(1, 1, "for<'b>");
+        check(1, 2, "for<'c>");
 
-        check(2, 0, "for<'a, 'b> ");
-        check(2, 1, "for<'b, 'c> ");
-        check(2, 2, "for<'c, 'd> ");
+        check(2, 0, "for<'a, 'b>");
+        check(2, 1, "for<'b, 'c>");
+        check(2, 2, "for<'c, 'd>");
     }
 
     #[track_caller]
     fn check_with_rustc_dangle(symbol: &str) {
-        let actual = Symbol::parse_from_str(symbol).unwrap();
+        let actual = Symbol::parse_from_str(symbol).unwrap().0;
         let expected = rustc_demangle::demangle(symbol);
 
         assert_eq!(actual.to_string(), expected.to_string());

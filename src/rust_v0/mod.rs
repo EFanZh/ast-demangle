@@ -53,7 +53,7 @@ impl<'a> Symbol<'a> {
             .parse(context)
     }
 
-    pub fn parse_from_str(input: &'a str) -> Result<Self, Box<dyn Error>> {
+    pub fn parse_from_str(input: &'a str) -> Result<(Self, &'a str), Box<dyn Error>> {
         let input = input
             .strip_prefix("_R")
             .or_else(|| input.strip_prefix("R"))
@@ -61,7 +61,7 @@ impl<'a> Symbol<'a> {
             .unwrap_or(input);
 
         Self::parse(Context::new(input, &RefCell::default()))
-            .map(|(_, result)| result)
+            .map(|(context, result)| (result, context.data))
             .map_err(|e| e.map(|e| e.code).into())
     }
 }
