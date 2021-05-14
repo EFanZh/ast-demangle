@@ -1,0 +1,9 @@
+[package]
+authors = ["EFanZh <efanzh@gmail.com>"]
+edition = "2018"
+name = "verify-against-rustc-demangle"
+version = "0.1.0"
+
+[dependencies]
+ast-demangle = {path = "../.."}
+rustc-demangle = "*"

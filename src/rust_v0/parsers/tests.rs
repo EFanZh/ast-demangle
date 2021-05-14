@@ -1,7 +1,7 @@
-use super::context::Context;
-use super::{
-    Abi, Base62Number, BasicType, Const, DecimalNumber, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg,
-    Identifier, ImplPath, Path, Symbol, Type, UndisambiguatedIdentifier,
+use crate::rust_v0::context::Context;
+use crate::rust_v0::{
+    Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg, Identifier, ImplPath, Path, Symbol,
+    Type,
 };
 use nom::error::{Error, ErrorKind};
 use nom::IResult;
@@ -30,7 +30,7 @@ fn id(name: &str) -> Identifier {
 #[test]
 fn test_parse_undisambiguated_identifier() {
     fn parse(input: &str) -> IResult<&str, Cow<str>> {
-        simplify_result(UndisambiguatedIdentifier::parse(Context::new(
+        simplify_result(super::parse_undisambiguated_identifier(Context::new(
             input,
             &RefCell::default(),
         )))
@@ -52,7 +52,7 @@ fn test_abi() {
     fn parse(input: &str) -> IResult<&str, Abi> {
         let back_ref_table = RefCell::default();
 
-        simplify_result(Abi::parse(Context::new(input, &back_ref_table)))
+        simplify_result(super::parse_abi(Context::new(input, &back_ref_table)))
     }
 
     assert_eq!(parse(""), make_err("", ErrorKind::Digit));
@@ -64,7 +64,7 @@ fn test_abi() {
 #[test]
 fn test_parse_decimal_number() {
     fn parse(input: &str) -> IResult<&str, u64> {
-        simplify_result(DecimalNumber::parse(Context::new(input, &RefCell::default())))
+        simplify_result(super::parse_decimal_number(Context::new(input, &RefCell::default())))
     }
 
     assert_eq!(parse(""), make_err("", ErrorKind::Digit));
@@ -92,7 +92,7 @@ fn test_parse_decimal_number() {
 #[test]
 fn test_parse_base_62_number() {
     fn parse(input: &str) -> IResult<&str, u64> {
-        simplify_result(Base62Number::parse(Context::new(input, &RefCell::default())))
+        simplify_result(super::parse_base62_number(Context::new(input, &RefCell::default())))
     }
 
     assert_eq!(parse("_"), Ok(("", 0)));
@@ -104,7 +104,7 @@ fn test_parse_base_62_number() {
 }
 
 fn parse_symbol(input: &str) -> IResult<&str, Symbol> {
-    simplify_result(Symbol::parse(Context::new(input, &RefCell::default())))
+    simplify_result(super::parse_symbol(Context::new(input, &RefCell::default())))
 }
 
 #[test]

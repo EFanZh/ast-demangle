@@ -630,7 +630,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_with_rustc_dangle(symbol: &str) {
+    fn check_with_rustc_demangle(symbol: &str) {
         let actual = Symbol::parse_from_str(symbol).unwrap().0;
         let expected = rustc_demangle::demangle(symbol);
 
@@ -640,53 +640,59 @@ mod tests {
 
     #[test]
     fn test_rustc_demangle_crate_with_leading_digitame() {
-        check_with_rustc_dangle("_RNvC6_123foo3bar");
+        check_with_rustc_demangle("_RNvC6_123foo3bar");
     }
 
     #[test]
     fn test_rustc_demangle_utf8_idents() {
-        check_with_rustc_dangle("_RNqCs4fqI2P2rA04_11utf8_identsu30____7hkackfecea1cbdathfdh9hlq6y");
+        check_with_rustc_demangle("_RNqCs4fqI2P2rA04_11utf8_identsu30____7hkackfecea1cbdathfdh9hlq6y");
     }
 
     #[test]
     fn test_rustc_demangle_closure() {
-        check_with_rustc_dangle("_RNCNCNgCs6DXkGYLi8lr_2cc5spawn00B5_");
+        check_with_rustc_demangle("_RNCNCNgCs6DXkGYLi8lr_2cc5spawn00B5_");
 
-        check_with_rustc_dangle(
+        check_with_rustc_demangle(
             "_RNCINkXs25_NgCsbmNqQUJIY6D_4core5sliceINyB9_4IterhENuNgNoBb_4iter8iterator8Iterator9rpositionNCNgNpB9_6memchr7memrchrs_0E0Bb_"
         );
     }
 
     #[test]
     fn test_rustc_demangle_dyn_trait() {
-        check_with_rustc_dangle(
+        check_with_rustc_demangle(
             "_RINbNbCskIICzLVDPPb_5alloc5alloc8box_freeDINbNiB4_5boxed5FnBoxuEp6OutputuEL_ECs1iopQbuBiw2_3std",
         );
     }
 
     #[test]
     fn test_rustc_demangle_const_generics() {
-        check_with_rustc_dangle("_RINtC8arrayvec8ArrayVechKj7b_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_8UnsignedKhb_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_6SignedKs98_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_6SignedKanb_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4BoolKb0_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4BoolKb1_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4CharKc76_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4CharKca_E");
-        check_with_rustc_dangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4CharKc2202_E");
-        check_with_rustc_dangle("_RNvNvMCs4fqI2P2rA04_13const_genericINtB4_3FooKpE3foo3FOO");
+        check_with_rustc_demangle("_RINtC8arrayvec8ArrayVechKj7b_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_8UnsignedKhb_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_6SignedKs98_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_6SignedKanb_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4BoolKb0_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4BoolKb1_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4CharKc76_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4CharKca_E");
+        check_with_rustc_demangle("_RMCs4fqI2P2rA04_13const_genericINtB0_4CharKc2202_E");
+        check_with_rustc_demangle("_RNvNvMCs4fqI2P2rA04_13const_genericINtB4_3FooKpE3foo3FOO");
     }
 
     #[test]
     fn test_rustc_demangle_exponential_explosion() {
-        check_with_rustc_dangle("_RMC0TTTTTTpB8_EB7_EB6_EB5_EB4_EB3_E");
+        check_with_rustc_demangle("_RMC0TTTTTTpB8_EB7_EB6_EB5_EB4_EB3_E");
     }
 
     #[test]
     fn test_rustc_demangle_thinlto() {
-        check_with_rustc_dangle("_RC3foo.llvm.9D1C9369");
-        check_with_rustc_dangle("_RC3foo.llvm.9D1C9369@@16");
-        check_with_rustc_dangle("_RNvC9backtrace3foo.llvm.A5310EB9");
+        check_with_rustc_demangle("_RC3foo.llvm.9D1C9369");
+        check_with_rustc_demangle("_RC3foo.llvm.9D1C9369@@16");
+        check_with_rustc_demangle("_RNvC9backtrace3foo.llvm.A5310EB9");
+    }
+
+    #[test]
+    fn test_rustc_demangle_misc() {
+        check_with_rustc_demangle("_RINvYQDNtNtNtNtCs29lbbC0kHcQ_4core4iter6traits8iterator8Iteratorp4ItemTRRNtNtCsf3SUqAoUaAd_12rustc_middle2ty3TySRbNtNtNtCshFshXKPbts9_18rustc_query_system9dep_graph5graph12DepNodeIndexEEL_B5_4foldjNCNvYB3_B30_5count0ECs7ORiaTkfWmE_16rustc_query_impl");
+        check_with_rustc_demangle("_RINvYINtNtNtNtCs29lbbC0kHcQ_4core4iter8adapters3map3MapINtCs2U14P4XHdAm_8smallvec8IntoIterANtNtCs6u4OS1VUqkU_9rustc_hir3hir6ItemIdj1_ENCNvMs_Cs4itKs8KOMEp_18rustc_ast_loweringNtB2f_15LoweringContext10lower_stmt0ENtNtNtBa_6traits8iterator8Iterator7collectINtBU_8SmallVecANtB1t_4StmtB24_EEB2f_");
     }
 }

@@ -10,3 +10,6 @@ punycode = "*"
 
 [dev-dependencies]
 rustc-demangle = "*"
+
+[workspace]
+members = ["tools/verify-against-rustc-demangle"]
