@@ -471,110 +471,110 @@ fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64)
 
 impl<'a> Symbol<'a> {
     #[must_use]
-    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: Style) -> impl Display + '_ {
         display_path(&self.path, style, 0, true)
     }
 }
 
 impl<'a> Display for Symbol<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+        self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
     }
 }
 
 impl<'a> Path<'a> {
     #[must_use]
-    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: Style) -> impl Display + '_ {
         display_path(self, style, 0, false)
     }
 }
 
 impl<'a> Display for Path<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+        self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
     }
 }
 
 impl<'a> Identifier<'a> {
     #[must_use]
-    pub fn demangle(&self) -> impl Display + '_ {
+    pub fn display(&self) -> impl Display + '_ {
         self.name.as_ref()
     }
 }
 
 impl<'a> Display for Identifier<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle().fmt(f)
+        self.display().fmt(f)
     }
 }
 
 impl<'a> GenericArg<'a> {
     #[must_use]
-    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: Style) -> impl Display + '_ {
         display_generic_arg(self, style, 0)
     }
 }
 
 impl<'a> Display for GenericArg<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+        self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
     }
 }
 
 impl<'a> Type<'a> {
     #[must_use]
-    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: Style) -> impl Display + '_ {
         display_type(self, style, 0)
     }
 }
 
 impl<'a> Display for Type<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+        self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
     }
 }
 
 impl BasicType {
     #[must_use]
-    pub fn demangle(self) -> impl Display {
+    pub fn display(self) -> impl Display {
         display_basic_type(self)
     }
 }
 
 impl Display for BasicType {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle().fmt(f)
+        self.display().fmt(f)
     }
 }
 
 impl<'a> FnSig<'a> {
     #[must_use]
-    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: Style) -> impl Display + '_ {
         display_fn_sig(self, style, 0)
     }
 }
 
 impl<'a> Display for FnSig<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+        self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
     }
 }
 
 impl<'a> Const<'a> {
     #[must_use]
-    pub fn demangle(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: Style) -> impl Display + '_ {
         display_const(self, style, 0)
     }
 }
 
 impl<'a> Display for Const<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.demangle(if f.alternate() { Style::Normal } else { Style::Long })
+        self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
     }
 }
