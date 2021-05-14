@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::str;
 
 mod context;
-pub mod demangle;
+pub mod display;
 mod parsers;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
