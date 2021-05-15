@@ -8,7 +8,6 @@ use nom::IResult;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::str;
 
 fn make_err<T>(input: &str, error_kind: ErrorKind) -> IResult<&str, T> {
     Err(nom::Err::Error(Error::new(input, error_kind)))

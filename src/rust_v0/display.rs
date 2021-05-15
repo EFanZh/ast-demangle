@@ -1,15 +1,17 @@
-use crate::rust_v0::{
-    Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier, Path, Symbol, Type,
-};
+use crate::rust_v0::{Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type};
 use std::cell::Cell;
 use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter, Write};
-use std::str;
 
+/// Denote the style for displaying the symbol.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Style {
+    /// Omit enclosing namespaces to get a shorter name.
     Short,
+    /// Omit crate hashes and const value types. This matches rustc-demangle’s `{}` format.
     Normal,
+    /// Show crate hashes and const value types. This matches rustc-demangle’s `{:#}` format. Note that even with this
+    /// style, impl paths are still omitted.
     Long,
 }
 
@@ -44,7 +46,12 @@ fn display_separated_list(values: impl IntoIterator<Item = impl Display>, separa
     })
 }
 
-fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
+pub(super) fn display_path<'a>(
+    path: &'a Path,
+    style: Style,
+    bound_lifetime_depth: u64,
+    in_value: bool,
+) -> impl Display + 'a {
     display_fn(move |f| match path {
         Path::CrateRoot(name) => match style {
             Style::Short | Style::Normal => f.write_str(&name.name),
@@ -144,7 +151,11 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
     })
 }
 
-fn display_generic_arg<'a>(generic_arg: &'a GenericArg, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+pub(super) fn display_generic_arg<'a>(
+    generic_arg: &'a GenericArg,
+    style: Style,
+    bound_lifetime_depth: u64,
+) -> impl Display + 'a {
     display_fn(move |f| match generic_arg {
         GenericArg::Lifetme(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
         GenericArg::Type(type_) => display_type(type_, style, bound_lifetime_depth).fmt(f),
@@ -167,7 +178,7 @@ fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Displ
     })
 }
 
-fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+pub(super) fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| match type_ {
         Type::Basic(basic_type) => display_basic_type(*basic_type).fmt(f),
         Type::Named(path) => display_path(path, style, bound_lifetime_depth, false).fmt(f),
@@ -232,7 +243,7 @@ fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) ->
     })
 }
 
-fn display_basic_type(basic_type: BasicType) -> impl Display {
+pub(super) fn display_basic_type(basic_type: BasicType) -> impl Display {
     display_fn(move |f| {
         f.write_str(match basic_type {
             BasicType::I8 => "i8",
@@ -260,7 +271,7 @@ fn display_basic_type(basic_type: BasicType) -> impl Display {
     })
 }
 
-fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+pub(super) fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
         if fn_sig.bound_lifetimes != 0 {
             write!(f, "{} ", display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth))?;
@@ -418,7 +429,7 @@ fn display_u64(num_str: &str) -> impl Display + '_ {
     })
 }
 
-fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| match const_ {
         Const::Data { type_, data } => {
             if let Type::Basic(basic_type) = type_.as_ref() {
@@ -467,116 +478,6 @@ fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64)
         }
         Const::Placeholder => f.write_char('_'),
     })
-}
-
-impl<'a> Symbol<'a> {
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
-        display_path(&self.path, style, 0, true)
-    }
-}
-
-impl<'a> Display for Symbol<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
-    }
-}
-
-impl<'a> Path<'a> {
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
-        display_path(self, style, 0, false)
-    }
-}
-
-impl<'a> Display for Path<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
-    }
-}
-
-impl<'a> Identifier<'a> {
-    #[must_use]
-    pub fn display(&self) -> impl Display + '_ {
-        self.name.as_ref()
-    }
-}
-
-impl<'a> Display for Identifier<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display().fmt(f)
-    }
-}
-
-impl<'a> GenericArg<'a> {
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
-        display_generic_arg(self, style, 0)
-    }
-}
-
-impl<'a> Display for GenericArg<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
-    }
-}
-
-impl<'a> Type<'a> {
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
-        display_type(self, style, 0)
-    }
-}
-
-impl<'a> Display for Type<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
-    }
-}
-
-impl BasicType {
-    #[must_use]
-    pub fn display(self) -> impl Display {
-        display_basic_type(self)
-    }
-}
-
-impl Display for BasicType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display().fmt(f)
-    }
-}
-
-impl<'a> FnSig<'a> {
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
-        display_fn_sig(self, style, 0)
-    }
-}
-
-impl<'a> Display for FnSig<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
-    }
-}
-
-impl<'a> Const<'a> {
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
-        display_const(self, style, 0)
-    }
-}
-
-impl<'a> Display for Const<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
-    }
 }
 
 #[cfg(test)]

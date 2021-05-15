@@ -1,7 +1,6 @@
+use crate::rust_v0::{Const, Path, Type};
 use nom::error::{ErrorKind, ParseError};
 use nom::{Compare, IResult, InputIter, InputLength, InputTake, InputTakeAtPosition, Needed, Offset, Slice};
-
-use super::{Const, Path, Type};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::RangeTo;
