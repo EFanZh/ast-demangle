@@ -1,6 +1,6 @@
 //! # ast-demangle
 //!
-//! Parse mangled names and produce structed results.
+//! Parses mangled names and produces structed results.
 //!
 //! Example:
 //!
@@ -17,7 +17,7 @@
 //! // The default style for displaying is the long format.
 //! assert_eq!(format!("{}", symbol), "regex[4df147058689a776]::utf8::decode_utf8");
 //!
-//! // To omit the crate hash, use the alternative display format.
+//! // To omit the crate hash, use the alternate display format.
 //! assert_eq!(format!("{:#}", symbol), "regex::utf8::decode_utf8");
 //!
 //! // Use `Symbol::display` and `Style` to specify the display style explicitly.
