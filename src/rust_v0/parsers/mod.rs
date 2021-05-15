@@ -30,7 +30,7 @@ fn opt_u64<I: Clone, E: ParseError<I>>(parser: impl Parser<I, u64, E>) -> impl F
 
 // References:
 //
-// - https://github.com/alexcrichton/rustc-demangle/blob/master/src/v0.rs.
+// - https://github.com/alexcrichton/rustc-demangle/blob/main/src/v0.rs.
 // - https://github.com/michaelwoerister/std-mangle-rs/blob/master/src/ast_demangle.rs.
 // - https://github.com/rust-lang/rust/blob/master/compiler/rustc_symbol_mangling/src/v0.rs.
 // - https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html.
