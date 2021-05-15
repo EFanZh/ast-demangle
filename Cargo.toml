@@ -14,7 +14,7 @@ nom = "6"
 punycode = "0.4"
 
 [dev-dependencies]
-rustc-demangle = "*"
+rustc-demangle = "0.1"
 
 [workspace]
 members = ["tools/verify-against-rustc-demangle"]
