@@ -1,6 +1,6 @@
 //! # ast-demangle
 //!
-//! Parses mangled names and produces structed results.
+//! Parses mangled names and produces structured results.
 //!
 //! Example:
 //!

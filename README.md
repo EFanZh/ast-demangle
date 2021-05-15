@@ -4,7 +4,7 @@
 [![docs](https://docs.rs/ast-demangle/badge.svg)](https://docs.rs/ast-demangle)
 [![.github/workflows/ci.yml](https://github.com/EFanZh/ast-demangle/actions/workflows/ci.yml/badge.svg)](https://github.com/EFanZh/ast-demangle/actions/workflows/ci.yml)
 
-Parses mangled names and produces structed results.
+Parses mangled names and produces structured results.
 
 Example:
 
