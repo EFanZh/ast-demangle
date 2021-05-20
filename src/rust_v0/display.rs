@@ -137,13 +137,15 @@ pub(super) fn display_path<'a>(
 
 fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
     display_fn(move |f| {
+        f.write_char('\'')?;
+
         if lifetime == 0 {
-            f.write_str("'_")
+            f.write_char('_')
         } else if let Some(depth) = bound_lifetime_depth.checked_sub(lifetime) {
             if depth < 26 {
-                write!(f, "'{}", char::from(b'a' + u8::try_from(depth).unwrap()))
+                f.write_char(char::from(b'a' + u8::try_from(depth).unwrap()))
             } else {
-                write!(f, "'_{}", depth)
+                write!(f, "_{}", depth)
             }
         } else {
             Err(fmt::Error)
@@ -196,15 +198,20 @@ pub(super) fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_dep
         Type::Tuple(tuple_types) => {
             write!(
                 f,
-                "({}{})",
+                "({}",
                 display_separated_list(
                     tuple_types
                         .iter()
                         .map(|type_| { display_type(type_, style, bound_lifetime_depth) }),
                     ", "
-                ),
-                if tuple_types.len() == 1 { "," } else { "" }
-            )
+                )
+            )?;
+
+            if tuple_types.len() == 1 {
+                f.write_char(',')?;
+            }
+
+            f.write_char(')')
         }
         Type::Ref { lifetime, type_ } => {
             f.write_char('&')?;
