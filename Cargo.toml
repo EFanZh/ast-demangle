@@ -7,7 +7,7 @@ keywords = ["demangle"]
 license = "MIT"
 name = "ast-demangle"
 repository = "https://github.com/EFanZh/ast-demangle"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
 nom = "6"
