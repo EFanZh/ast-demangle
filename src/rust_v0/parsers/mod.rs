@@ -134,7 +134,7 @@ fn parse_undisambiguated_identifier<'a, 'b>(context: Context<'a, 'b>) -> IResult
 
 fn parse_generic_arg<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, GenericArg<'a>> {
     alt((
-        parse_lifetime.map(GenericArg::Lifetme),
+        parse_lifetime.map(GenericArg::Lifetime),
         parse_type.map(GenericArg::Type),
         preceded(tag("K"), parse_const).map(GenericArg::Const),
     ))

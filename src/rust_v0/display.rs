@@ -157,7 +157,7 @@ pub(super) fn display_generic_arg<'a>(
     bound_lifetime_depth: u64,
 ) -> impl Display + 'a {
     display_fn(move |f| match generic_arg {
-        GenericArg::Lifetme(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
+        GenericArg::Lifetime(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
         GenericArg::Type(type_) => display_type(type_, style, bound_lifetime_depth).fmt(f),
         GenericArg::Const(const_) => display_const(const_, style, bound_lifetime_depth).fmt(f),
     })

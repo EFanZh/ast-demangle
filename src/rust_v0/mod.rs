@@ -124,7 +124,7 @@ impl<'a> Display for Identifier<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum GenericArg<'a> {
-    Lifetme(u64),
+    Lifetime(u64),
     Type(Rc<Type<'a>>),
     Const(Rc<Const<'a>>),
 }
