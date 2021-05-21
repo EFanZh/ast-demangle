@@ -62,15 +62,12 @@ pub(super) fn display_path<'a>(
         Path::InherentImpl { type_, .. } => {
             write!(f, "<{}>", display_type(type_, style, bound_lifetime_depth))
         }
-        Path::TraitImpl {
-            type_, trait_: path, ..
-        }
-        | Path::TraitDefinition { type_, trait_: path } => {
+        Path::TraitImpl { type_, trait_, .. } | Path::TraitDefinition { type_, trait_ } => {
             write!(
                 f,
                 "<{} as {}>",
                 display_type(type_, style, bound_lifetime_depth),
-                display_path(path, style, bound_lifetime_depth, false)
+                display_path(trait_, style, bound_lifetime_depth, false)
             )
         }
         Path::Nested { namespace, path, name } => match namespace {
