@@ -13,7 +13,7 @@ fn make_err<T>(input: &str, error_kind: ErrorKind) -> IResult<&str, T> {
     Err(nom::Err::Error(Error::new(input, error_kind)))
 }
 
-fn simplify_result<'a, 'b, T>(result: IResult<Context<'a, 'b>, T>) -> IResult<&'a str, T> {
+fn simplify_result<'a, T>(result: IResult<Context<'a, '_>, T>) -> IResult<&'a str, T> {
     result
         .map(|(rest, result)| (rest.data, result))
         .map_err(|e| e.map(|e| Error::new(e.input.data, e.code)))

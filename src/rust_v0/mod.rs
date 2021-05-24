@@ -47,7 +47,7 @@ impl<'a> Symbol<'a> {
     }
 }
 
-impl<'a> Display for Symbol<'a> {
+impl Display for Symbol<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
@@ -81,7 +81,7 @@ pub enum Path<'a> {
     },
 }
 
-impl<'a> Path<'a> {
+impl Path<'_> {
     /// Returns an object that implements [`Display`] for printing the path.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display + '_ {
@@ -89,7 +89,7 @@ impl<'a> Path<'a> {
     }
 }
 
-impl<'a> Display for Path<'a> {
+impl Display for Path<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
@@ -108,7 +108,7 @@ pub struct Identifier<'a> {
     pub name: Cow<'a, str>,
 }
 
-impl<'a> Identifier<'a> {
+impl Identifier<'_> {
     /// Returns an object that implements [`Display`] for printing the identifier.
     #[must_use]
     pub fn display(&self) -> impl Display + '_ {
@@ -116,7 +116,7 @@ impl<'a> Identifier<'a> {
     }
 }
 
-impl<'a> Display for Identifier<'a> {
+impl Display for Identifier<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display().fmt(f)
     }
@@ -129,7 +129,7 @@ pub enum GenericArg<'a> {
     Const(Rc<Const<'a>>),
 }
 
-impl<'a> GenericArg<'a> {
+impl GenericArg<'_> {
     /// Returns an object that implements [`Display`] for printing the generic argument.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display + '_ {
@@ -137,7 +137,7 @@ impl<'a> GenericArg<'a> {
     }
 }
 
-impl<'a> Display for GenericArg<'a> {
+impl Display for GenericArg<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
@@ -159,7 +159,7 @@ pub enum Type<'a> {
     DynTrait { dyn_bounds: DynBounds<'a>, lifetime: u64 },
 }
 
-impl<'a> Type<'a> {
+impl Type<'_> {
     /// Returns an object that implements [`Display`] for printing the type.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display + '_ {
@@ -167,7 +167,7 @@ impl<'a> Type<'a> {
     }
 }
 
-impl<'a> Display for Type<'a> {
+impl Display for Type<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
@@ -222,7 +222,7 @@ pub struct FnSig<'a> {
     pub return_type: Rc<Type<'a>>,
 }
 
-impl<'a> FnSig<'a> {
+impl FnSig<'_> {
     /// Returns an object that implements [`Display`] for printing the function signature.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display + '_ {
@@ -230,7 +230,7 @@ impl<'a> FnSig<'a> {
     }
 }
 
-impl<'a> Display for FnSig<'a> {
+impl Display for FnSig<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
@@ -267,7 +267,7 @@ pub enum Const<'a> {
     Placeholder,
 }
 
-impl<'a> Const<'a> {
+impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display + '_ {
@@ -275,7 +275,7 @@ impl<'a> Const<'a> {
     }
 }
 
-impl<'a> Display for Const<'a> {
+impl Display for Const<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)

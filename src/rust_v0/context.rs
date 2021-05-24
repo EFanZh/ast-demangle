@@ -30,13 +30,13 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 }
 
-impl<'a, 'b> PartialEq for Context<'a, 'b> {
+impl PartialEq for Context<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(self.data, other.data)
     }
 }
 
-impl<'a, 'b, T> Compare<T> for Context<'a, 'b>
+impl<'a, T> Compare<T> for Context<'a, '_>
 where
     &'a str: Compare<T>,
 {
@@ -49,7 +49,7 @@ where
     }
 }
 
-impl<'a, 'b> InputIter for Context<'a, 'b> {
+impl<'a> InputIter for Context<'a, '_> {
     type Item = <&'a str as InputIter>::Item;
     type Iter = <&'a str as InputIter>::Iter;
     type IterElem = <&'a str as InputIter>::IterElem;
@@ -69,18 +69,18 @@ impl<'a, 'b> InputIter for Context<'a, 'b> {
         InputIter::position(&self.data, predicate)
     }
 
-    fn slice_index(&self, count: usize) -> Result<usize, nom::Needed> {
+    fn slice_index(&self, count: usize) -> Result<usize, Needed> {
         InputIter::slice_index(&self.data, count)
     }
 }
 
-impl<'a, 'b> InputLength for Context<'a, 'b> {
+impl InputLength for Context<'_, '_> {
     fn input_len(&self) -> usize {
         InputLength::input_len(&self.data)
     }
 }
 
-impl<'a, 'b> InputTake for Context<'a, 'b> {
+impl InputTake for Context<'_, '_> {
     fn take(&self, count: usize) -> Self {
         Self {
             data: InputTake::take(&self.data, count),
@@ -102,7 +102,7 @@ impl<'a, 'b> InputTake for Context<'a, 'b> {
     }
 }
 
-impl<'a, 'b> InputTakeAtPosition for Context<'a, 'b> {
+impl<'a> InputTakeAtPosition for Context<'a, '_> {
     type Item = <&'a str as InputTakeAtPosition>::Item;
 
     fn split_at_position<P, E: ParseError<Self>>(&self, predicate: P) -> IResult<Self, Self, E>
@@ -153,13 +153,13 @@ impl<'a, 'b> InputTakeAtPosition for Context<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Offset for Context<'a, 'b> {
+impl Offset for Context<'_, '_> {
     fn offset(&self, second: &Self) -> usize {
         Offset::offset(self.data, second.data)
     }
 }
 
-impl<'a, 'b> Slice<RangeTo<usize>> for Context<'a, 'b> {
+impl Slice<RangeTo<usize>> for Context<'_, '_> {
     fn slice(&self, range: RangeTo<usize>) -> Self {
         Self {
             data: Slice::slice(&self.data, range),
