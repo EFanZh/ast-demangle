@@ -470,11 +470,10 @@ pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_
                     _ => Err(fmt::Error),
                 }?;
 
-                match style {
-                    Style::Short | Style::Normal => Ok(()),
-                    Style::Long => {
-                        write!(f, ": {}", display_type(type_, style, bound_lifetime_depth))
-                    }
+                if matches!(style, Style::Long if *basic_type != BasicType::Bool && *basic_type != BasicType::Char) {
+                    display_type(type_, style, bound_lifetime_depth).fmt(f)
+                } else {
+                    Ok(())
                 }
             } else {
                 Err(fmt::Error)
