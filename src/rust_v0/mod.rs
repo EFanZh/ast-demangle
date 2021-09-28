@@ -37,7 +37,7 @@ impl<'a> Symbol<'a> {
     pub fn parse_from_str(input: &'a str) -> Result<(Self, &'a str), ParseSymbolError> {
         let input = input
             .strip_prefix("_R")
-            .or_else(|| input.strip_prefix("R"))
+            .or_else(|| input.strip_prefix('R'))
             .or_else(|| input.strip_prefix("__R"))
             .ok_or(ParseSymbolError)?;
 

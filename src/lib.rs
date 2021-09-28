@@ -110,8 +110,7 @@
     clippy::use_self,
     clippy::useless_let_if_seq,
     clippy::useless_transmute,
-    clippy::verbose_file_reads,
-    clippy::wrong_pub_self_convention
+    clippy::verbose_file_reads
 )]
 #![allow(clippy::non_ascii_literal)]
 

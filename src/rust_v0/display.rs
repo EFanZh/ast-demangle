@@ -444,7 +444,7 @@ pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_
                     | BasicType::I64
                     | BasicType::I128
                     | BasicType::Isize => {
-                        if let Some(num) = data.strip_prefix("n") {
+                        if let Some(num) = data.strip_prefix('n') {
                             write!(f, "-{}", display_u64(num))
                         } else {
                             display_u64(data).fmt(f)
