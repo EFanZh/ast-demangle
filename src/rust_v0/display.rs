@@ -1,3 +1,5 @@
+//! Pretty printing demangled symbol names.
+
 use crate::rust_v0::{Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type};
 use std::cell::Cell;
 use std::convert::TryFrom;

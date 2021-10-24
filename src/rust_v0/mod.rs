@@ -1,3 +1,6 @@
+//! Tools for demangling symbols using
+//! [Rust v0 syntax]((https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#syntax-of-mangled-names)).
+
 use crate::rust_v0::context::Context;
 use crate::rust_v0::display::Style;
 use std::borrow::Cow;
