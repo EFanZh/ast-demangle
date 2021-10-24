@@ -266,9 +266,41 @@ pub struct DynTraitAssocBinding<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Const<'a> {
-    Data { type_: Rc<Type<'a>>, data: &'a str },
+    I8(i8),
+    U8(u8),
+    Isize(isize),
+    Usize(usize),
+    I32(i32),
+    U32(u32),
+    I128(i128),
+    U128(u128),
+    I16(i16),
+    U16(u16),
+    I64(i64),
+    U64(u64),
+    Bool(bool),
+    Char(char),
+    Str(ConstStr<'a>),
+    Ref(Rc<Const<'a>>),
+    RefMut(Rc<Const<'a>>),
+    Array(Vec<Rc<Const<'a>>>),
+    Tuple(Vec<Rc<Const<'a>>>),
+    NamedStruct {
+        path: Rc<Path<'a>>,
+        fields: ConstFields<'a>,
+    },
     Placeholder,
 }
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ConstFields<'a> {
+    Unit,
+    Tuple(Vec<Rc<Const<'a>>>),
+    Struct(Vec<(Identifier<'a>, Rc<Const<'a>>)>),
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ConstStr<'a>(&'a str);
 
 impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.

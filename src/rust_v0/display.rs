@@ -1,8 +1,12 @@
 //! Pretty printing demangled symbol names.
 
-use crate::rust_v0::{Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type};
+use crate::rust_v0::{
+    Abi, BasicType, Const, ConstFields, ConstStr, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path,
+    Type,
+};
+use std::any;
 use std::cell::Cell;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Display, Formatter, Write};
 
 /// Denote the style for displaying the symbol.
@@ -425,63 +429,131 @@ fn display_dyn_trait_assoc_binding<'a>(
     })
 }
 
-fn display_u64(num_str: &str) -> impl Display + '_ {
-    display_fn(move |f| {
-        if let Ok(num) = u64::from_str_radix(num_str, 16) {
-            write!(f, "{}", num)
+pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+    fn write_integer<T: Display>(f: &mut Formatter, value: T, style: Style) -> fmt::Result {
+        write!(f, "{}", value)?;
+
+        if matches!(style, Style::Long) {
+            f.write_str(any::type_name::<T>())
         } else {
-            write!(f, "0x{}", num_str)
+            Ok(())
         }
+    }
+
+    display_fn(move |f| match const_ {
+        Const::I8(value) => write_integer(f, *value, style),
+        Const::U8(value) => write_integer(f, *value, style),
+        Const::Isize(value) => write_integer(f, *value, style),
+        Const::Usize(value) => write_integer(f, *value, style),
+        Const::I32(value) => write_integer(f, *value, style),
+        Const::U32(value) => write_integer(f, *value, style),
+        Const::I128(value) => write_integer(f, *value, style),
+        Const::U128(value) => write_integer(f, *value, style),
+        Const::I16(value) => write_integer(f, *value, style),
+        Const::U16(value) => write_integer(f, *value, style),
+        Const::I64(value) => write_integer(f, *value, style),
+        Const::U64(value) => write_integer(f, *value, style),
+        Const::Bool(value) => write!(f, "{}", value),
+        Const::Char(value) => write!(f, "{:?}", value),
+        Const::Str(value) => write!(f, "*{}", display_const_str(value)),
+        Const::Ref(value) => {
+            if let Const::Str(value) = value.as_ref() {
+                write!(f, "{}", display_const_str(value))
+            } else {
+                write!(f, "&{}", display_const(value, style, bound_lifetime_depth))
+            }
+        }
+        Const::RefMut(value) => write!(f, "&mut {}", display_const(value, style, bound_lifetime_depth)),
+        Const::Array(items) => write!(
+            f,
+            "[{}]",
+            display_separated_list(
+                items
+                    .iter()
+                    .map(|item| display_const(item, style, bound_lifetime_depth)),
+                ", "
+            )
+        ),
+        Const::Tuple(items) => write!(
+            f,
+            "({})",
+            display_separated_list(
+                items
+                    .iter()
+                    .map(|item| display_const(item, style, bound_lifetime_depth)),
+                ", "
+            )
+        ),
+        Const::NamedStruct { path, fields } => {
+            write!(f, "{}", display_path(path, style, bound_lifetime_depth, false))?;
+
+            match fields {
+                ConstFields::Unit => Ok(()),
+                ConstFields::Tuple(fields) => {
+                    write!(
+                        f,
+                        "({})",
+                        display_separated_list(
+                            fields
+                                .iter()
+                                .map(|field| display_const(field, style, bound_lifetime_depth)),
+                            ", "
+                        )
+                    )
+                }
+                ConstFields::Struct(fields) => {
+                    if fields.is_empty() {
+                        write!(f, "{{}}")
+                    } else {
+                        write!(
+                            f,
+                            "{{ {} }}",
+                            display_separated_list(
+                                fields.iter().map(|(name, value)| {
+                                    display_fn(move |f| {
+                                        write!(f, "{}: {}", name, display_const(value, style, bound_lifetime_depth))
+                                    })
+                                }),
+                                ", "
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        Const::Placeholder => write!(f, "_"),
     })
 }
 
-pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    display_fn(move |f| match const_ {
-        Const::Data { type_, data } => {
-            if let Type::Basic(basic_type) = type_.as_ref() {
-                match basic_type {
-                    BasicType::I8
-                    | BasicType::I16
-                    | BasicType::I32
-                    | BasicType::I64
-                    | BasicType::I128
-                    | BasicType::Isize => {
-                        if let Some(num) = data.strip_prefix('n') {
-                            write!(f, "-{}", display_u64(num))
-                        } else {
-                            display_u64(data).fmt(f)
-                        }
-                    }
-                    BasicType::U8
-                    | BasicType::U16
-                    | BasicType::U32
-                    | BasicType::U64
-                    | BasicType::U128
-                    | BasicType::Usize => display_u64(data).fmt(f),
-                    BasicType::Bool => match *data {
-                        "0" => f.write_str("false"),
-                        "1" => f.write_str("true"),
-                        _ => Err(fmt::Error),
-                    },
-                    BasicType::Char => {
-                        let value = u32::from_str_radix(data, 16).map_err(|_| fmt::Error)?;
-                        let c = char::try_from(value).map_err(|_| fmt::Error)?;
-
-                        fmt::Debug::fmt(&c, f)
-                    }
-                    _ => Err(fmt::Error),
-                }?;
-
-                if matches!(style, Style::Long if *basic_type != BasicType::Bool && *basic_type != BasicType::Char) {
-                    display_type(type_, style, bound_lifetime_depth).fmt(f)
-                } else {
-                    Ok(())
-                }
-            } else {
-                Err(fmt::Error)
-            }
+#[allow(clippy::missing_panics_doc)]
+#[must_use]
+pub(super) fn display_const_str<'a>(const_str: &ConstStr<'a>) -> impl Display + 'a {
+    fn decode_hex_digit(digit: u8) -> u8 {
+        match digit {
+            b'0'..=b'9' => digit - b'0',
+            _ => digit - (b'a' - 10),
         }
-        Const::Placeholder => f.write_char('_'),
+    }
+
+    let decoded = String::from_utf8(
+        const_str
+            .0
+            .as_bytes()
+            .chunks_exact(2)
+            .map(|value| {
+                let [high, low]: [u8; 2] = value.try_into().unwrap();
+
+                (decode_hex_digit(high) << 4) | decode_hex_digit(low)
+            })
+            .collect(),
+    );
+
+    display_fn(move |f| {
+        if let Ok(decoded) = &decoded {
+            write!(f, "{:?}", decoded)
+        } else {
+            Err(fmt::Error)
+        }
     })
 }
 

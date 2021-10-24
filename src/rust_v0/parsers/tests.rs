@@ -423,13 +423,7 @@ fn test_rustc_demangle_const_generics_usize_123() {
                     .into(),
                     generic_args: vec![
                         GenericArg::Type(Type::Basic(BasicType::U8).into()),
-                        GenericArg::Const(
-                            Const::Data {
-                                type_: Type::Basic(BasicType::Usize).into(),
-                                data: "7b"
-                            }
-                            .into()
-                        )
+                        GenericArg::Const(Const::Usize(123).into())
                     ]
                 }
                 .into(),
@@ -471,13 +465,7 @@ fn test_rustc_demangle_const_generics_u8_11() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::U8).into(),
-                                    data: "b"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::U8(11).into())]
                         }
                         .into()
                     )
@@ -522,13 +510,7 @@ fn test_rustc_demangle_const_generics_i16_152() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::I16).into(),
-                                    data: "98"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::I16(152).into())]
                         }
                         .into()
                     )
@@ -573,13 +555,7 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::I8).into(),
-                                    data: "nb"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::I8(-11).into())]
                         }
                         .into()
                     )
@@ -624,13 +600,7 @@ fn test_rustc_demangle_const_generics_bool_false() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::Bool).into(),
-                                    data: "0"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::Bool(false).into())]
                         }
                         .into()
                     )
@@ -675,13 +645,7 @@ fn test_rustc_demangle_const_generics_bool_true() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::Bool).into(),
-                                    data: "1"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::Bool(true).into())]
                         }
                         .into()
                     )
@@ -726,13 +690,7 @@ fn test_rustc_demangle_const_generics_char_v() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::Char).into(),
-                                    data: "76"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::Char('v').into())]
                         }
                         .into()
                     )
@@ -777,13 +735,7 @@ fn test_rustc_demangle_const_generics_char_lf() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::Char).into(),
-                                    data: "a"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::Char('\n').into())]
                         }
                         .into()
                     )
@@ -828,13 +780,7 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                                 }
                             }
                             .into(),
-                            generic_args: vec![GenericArg::Const(
-                                Const::Data {
-                                    type_: Type::Basic(BasicType::Char).into(),
-                                    data: "2202"
-                                }
-                                .into()
-                            )]
+                            generic_args: vec![GenericArg::Const(Const::Char('∂').into())]
                         }
                         .into()
                     )

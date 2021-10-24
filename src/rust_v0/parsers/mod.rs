@@ -1,16 +1,17 @@
 use crate::rust_v0::context::Context;
 use crate::rust_v0::{
-    Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier, ImplPath, Path,
-    Symbol, Type,
+    Abi, BasicType, Const, ConstFields, ConstStr, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg,
+    Identifier, ImplPath, Path, Symbol, Type,
 };
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take};
 use nom::character::complete::{alphanumeric0, digit1, hex_digit0};
-use nom::combinator::{map_opt, opt, recognize};
+use nom::combinator::{map_opt, opt};
 use nom::error::ParseError;
 use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::{IResult, Parser};
+use num_traits::{CheckedNeg, PrimInt};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::rc::Rc;
@@ -285,9 +286,37 @@ fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<
         Some(result)
     })
     .or(alt((
-        parse_type
-            .and(terminated(recognize(opt(tag("n")).and(hex_digit0)), tag("_")))
-            .map(|(type_, data)| Const::Data { type_, data: data.data }),
+        preceded(tag("a"), parse_const_int.map(Const::I8)),
+        preceded(tag("h"), parse_const_int.map(Const::U8)),
+        preceded(tag("i"), parse_const_int.map(Const::Isize)),
+        preceded(tag("j"), parse_const_int.map(Const::Usize)),
+        preceded(tag("l"), parse_const_int.map(Const::I32)),
+        preceded(tag("m"), parse_const_int.map(Const::U32)),
+        preceded(tag("n"), parse_const_int.map(Const::I128)),
+        preceded(tag("o"), parse_const_int.map(Const::U128)),
+        preceded(tag("s"), parse_const_int.map(Const::I16)),
+        preceded(tag("t"), parse_const_int.map(Const::U16)),
+        preceded(tag("x"), parse_const_int.map(Const::I64)),
+        preceded(tag("y"), parse_const_int.map(Const::U64)),
+        preceded(
+            tag("b"),
+            map_opt(parse_const_int::<u8>, |result| match result {
+                0 => Some(Const::Bool(false)),
+                1 => Some(Const::Bool(true)),
+                _ => None,
+            }),
+        ),
+        preceded(
+            tag("c"),
+            map_opt(parse_const_int::<u32>, |result| result.try_into().ok().map(Const::Char)),
+        ),
+        preceded(tag("e"), parse_const_str.map(Const::Str)),
+        preceded(tag("R"), parse_const.map(Const::Ref)),
+        preceded(tag("Q"), parse_const.map(Const::RefMut)),
+        preceded(tag("A"), many0(parse_const).map(Const::Array)),
+        preceded(tag("T"), many0(parse_const).map(Const::Tuple)),
+        preceded(tag("V"), parse_path.and(parse_const_fields))
+            .map(|(path, fields)| Const::NamedStruct { path, fields }),
         tag("p").map(|_| Const::Placeholder),
     ))
     .map(|result| {
@@ -301,6 +330,41 @@ fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<
 
         result
     }))
+    .parse(context)
+}
+
+fn parse_const_fields<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, ConstFields<'a>> {
+    alt((
+        tag("U").map(|_| ConstFields::Unit),
+        delimited(tag("T"), many0(parse_const), tag("E")).map(ConstFields::Tuple),
+        delimited(tag("S"), many0(parse_identifier.and(parse_const)), tag("E")).map(ConstFields::Struct),
+    ))
+    .parse(context)
+}
+
+fn parse_const_int<'a, 'b, T>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, T>
+where
+    T: CheckedNeg + PrimInt,
+{
+    terminated(
+        map_opt(opt(tag("n")).and(hex_digit0), |(is_negative, data): (_, Context)| {
+            let base = T::from_str_radix(data.data, 16).ok();
+
+            if is_negative.is_none() {
+                base
+            } else {
+                base.and_then(|value| value.checked_neg())
+            }
+        }),
+        tag("_"),
+    )
+    .parse(context)
+}
+
+fn parse_const_str<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, ConstStr<'a>> {
+    map_opt(terminated(hex_digit0, tag("_")), |context: Context| {
+        (context.data.len() % 2 == 0).then(|| ConstStr(context.data))
+    })
     .parse(context)
 }
 
