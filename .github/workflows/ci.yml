@@ -56,7 +56,8 @@ jobs:
           - run: cargo llvm-cov --lcov --workspace --output-path lcov.info
           - uses: codecov/codecov-action@v1
             with:
-                file: coverage/lcov.info
+                file: lcov.info
           - uses: coverallsapp/github-action@master
             with:
                 github-token: ${{ secrets.GITHUB_TOKEN }}
+                path-to-lcov: lcov.info
