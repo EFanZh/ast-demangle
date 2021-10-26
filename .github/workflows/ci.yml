@@ -1,3 +1,4 @@
+name: CI
 on: push
 jobs:
     rustfmt:
@@ -40,3 +41,22 @@ jobs:
                   - macOS-latest
                   - ubuntu-latest
                   - windows-latest
+    tests:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions-rs/install@v0.1
+            with:
+                crate: cargo-llvm-cov
+          - uses: actions/checkout@v2
+          - uses: actions-rs/toolchain@v1
+            with:
+                toolchain: nightly
+                override: true
+                components: llvm-tools-preview
+          - run: cargo llvm-cov --lcov --workspace --output-path lcov.info
+          - uses: codecov/codecov-action@v1
+            with:
+                file: coverage/lcov.info
+          - uses: coverallsapp/github-action@master
+            with:
+                github-token: ${{ secrets.GITHUB_TOKEN }}
