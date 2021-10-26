@@ -2,7 +2,9 @@
 
 [![crates.io](https://img.shields.io/crates/v/ast-demangle)](https://crates.io/crates/ast-demangle)
 [![docs](https://docs.rs/ast-demangle/badge.svg)](https://docs.rs/ast-demangle)
-[![.github/workflows/ci.yml](https://github.com/EFanZh/ast-demangle/actions/workflows/ci.yml/badge.svg)](https://github.com/EFanZh/ast-demangle/actions/workflows/ci.yml)
+[![CI](https://github.com/EFanZh/ast-demangle/actions/workflows/ci.yml/badge.svg)](https://github.com/EFanZh/ast-demangle/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/EFanZh/ast-demangle/branch/main/graph/badge.svg)](https://codecov.io/gh/EFanZh/ast-demangle)
+[![Coveralls](https://coveralls.io/repos/github/EFanZh/ast-demangle/badge.svg?branch=main)](https://coveralls.io/github/EFanZh/ast-demangle)
 
 Parses mangled names and produces structured results.
 
