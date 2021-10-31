@@ -31,10 +31,10 @@ fn opt_u64<I: Clone, E: ParseError<I>>(parser: impl Parser<I, u64, E>) -> impl F
 
 // References:
 //
-// - https://github.com/alexcrichton/rustc-demangle/blob/main/src/v0.rs.
-// - https://github.com/michaelwoerister/std-mangle-rs/blob/master/src/ast_demangle.rs.
-// - https://github.com/rust-lang/rust/blob/master/compiler/rustc_symbol_mangling/src/v0.rs.
-// - https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html.
+// - <https://github.com/rust-lang/rustc-demangle/blob/main/src/v0.rs>.
+// - <https://github.com/michaelwoerister/std-mangle-rs/blob/master/src/ast_demangle.rs>.
+// - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_symbol_mangling/src/v0.rs>.
+// - <https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html>.
 
 pub fn parse_symbol<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Symbol<'a>> {
     tuple((opt(parse_decimal_number), parse_path, opt(parse_path)))
@@ -313,8 +313,8 @@ fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<
         preceded(tag("e"), parse_const_str.map(Const::Str)),
         preceded(tag("R"), parse_const.map(Const::Ref)),
         preceded(tag("Q"), parse_const.map(Const::RefMut)),
-        preceded(tag("A"), many0(parse_const).map(Const::Array)),
-        preceded(tag("T"), many0(parse_const).map(Const::Tuple)),
+        delimited(tag("A"), many0(parse_const), tag("E")).map(Const::Array),
+        delimited(tag("T"), many0(parse_const), tag("E")).map(Const::Tuple),
         preceded(tag("V"), parse_path.and(parse_const_fields))
             .map(|(path, fields)| Const::NamedStruct { path, fields }),
         tag("p").map(|_| Const::Placeholder),

@@ -306,7 +306,7 @@ impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display + '_ {
-        display::display_const(self, style, 0)
+        display::display_const(self, style, 0, true)
     }
 }
 

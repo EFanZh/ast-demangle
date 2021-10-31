@@ -1,4 +1,5 @@
 use crate::rust_v0::context::Context;
+use crate::rust_v0::display::{self, Style};
 use crate::rust_v0::{
     Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg, Identifier, ImplPath, Path, Symbol,
     Type,
@@ -47,7 +48,7 @@ fn test_parse_undisambiguated_identifier() {
 }
 
 #[test]
-fn test_abi() {
+fn test_parse_abi() {
     fn parse(input: &str) -> IResult<&str, Abi> {
         let back_ref_table = RefCell::default();
 
@@ -58,6 +59,121 @@ fn test_abi() {
 
     assert_eq!(parse("CDEF"), Ok(("DEF", Abi::C)));
     assert_eq!(parse("3abcdef"), Ok(("def", Abi::Named("abc".into()))));
+}
+
+#[track_caller]
+fn check_parse_const(input: &str, expected: &str) {
+    let back_ref_table = RefCell::default();
+
+    let result = display::display_const(
+        &super::parse_const(Context::new(input, &back_ref_table)).ok().unwrap().1,
+        Style::Normal,
+        0,
+        false,
+    )
+    .to_string();
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_parse_const_str() {
+    check_parse_const("e616263_", "{*\"abc\"}");
+    check_parse_const("e27_", r#"{*"'"}"#);
+    check_parse_const("e090a_", "{*\"\\t\\n\"}");
+    check_parse_const("ee28882c3bc_", "{*\"∂ü\"}");
+
+    check_parse_const(
+        "ee183a1e18390e183ade1839be18394e1839ae18390e183935fe18392e18394e1839b\
+         e183a0e18398e18394e1839ae183985fe183a1e18390e18393e18398e1839ae18398_",
+        "{*\"საჭმელად_გემრიელი_სადილი\"}",
+    );
+
+    check_parse_const(
+        "ef09f908af09fa688f09fa686f09f90ae20c2a720f09f90b6f09f9192e298\
+         95f09f94a520c2a720f09fa7a1f09f929bf09f929af09f9299f09f929c_",
+        "{*\"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜\"}",
+    );
+}
+
+#[test]
+fn test_parse_const_ref_str() {
+    check_parse_const("Re616263_", "\"abc\"");
+    check_parse_const("Re27_", r#""'""#);
+    check_parse_const("Re090a_", "\"\\t\\n\"");
+    check_parse_const("Ree28882c3bc_", "\"∂ü\"");
+
+    check_parse_const(
+        "Ree183a1e18390e183ade1839be18394e1839ae18390e183935fe18392e18394e1839b\
+         e183a0e18398e18394e1839ae183985fe183a1e18390e18393e18398e1839ae18398_",
+        "\"საჭმელად_გემრიელი_სადილი\"",
+    );
+
+    check_parse_const(
+        "Ref09f908af09fa688f09fa686f09f90ae20c2a720f09f90b6f09f9192e298\
+         95f09f94a520c2a720f09fa7a1f09f929bf09f929af09f9299f09f929c_",
+        "\"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜\"",
+    );
+}
+
+#[test]
+fn test_parse_const_ref() {
+    check_parse_const("Rp", "{&_}");
+    check_parse_const("Rh7b_", "{&123}");
+    check_parse_const("Rb0_", "{&false}");
+    check_parse_const("Rc58_", "{&'X'}");
+    check_parse_const("RRRh0_", "{&&&0}");
+    check_parse_const("RRRe_", "{&&\"\"}");
+    check_parse_const("QAE", "{&mut []}");
+}
+
+#[test]
+fn test_parse_const_array() {
+    check_parse_const("AE", "{[]}");
+    check_parse_const("Aj0_E", "{[0]}");
+    check_parse_const("Ah1_h2_h3_E", "{[1, 2, 3]}");
+    check_parse_const("ARe61_Re62_Re63_E", "{[\"a\", \"b\", \"c\"]}");
+    check_parse_const("AAh1_h2_EAh3_h4_EE", "{[[1, 2], [3, 4]]}");
+}
+
+#[test]
+fn test_parse_const_tuple() {
+    check_parse_const("TE", "{()}");
+    check_parse_const("Tj0_E", "{(0,)}");
+    check_parse_const("Th1_b0_E", "{(1, false)}");
+    check_parse_const("TRe616263_c78_RAh1_h2_h3_EE", "{(\"abc\", 'x', &[1, 2, 3])}");
+}
+
+#[test]
+fn test_parse_const_adt() {
+    check_parse_const(
+        "VNvINtNtC4core6option6OptionjE4NoneU",
+        "{core::option::Option::<usize>::None}",
+    );
+
+    check_parse_const(
+        "VNvINtNtC4core6option6OptionjE4SomeTj0_E",
+        "{core::option::Option::<usize>::Some(0)}",
+    );
+
+    check_parse_const(
+        "VNtC3foo3BarS1sRe616263_2chc78_5sliceRAh1_h2_h3_EE",
+        "{foo::Bar { s: \"abc\", ch: 'x', slice: &[1, 2, 3] }}",
+    );
+}
+
+#[test]
+fn test_parse_base62_number() {
+    fn parse(input: &str) -> IResult<&str, u64> {
+        simplify_result(super::parse_base62_number(Context::new(input, &RefCell::default())))
+    }
+
+    assert_eq!(parse("_"), Ok(("", 0)));
+    assert_eq!(parse("0_"), Ok(("", 1)));
+    assert_eq!(parse("7_"), Ok(("", 8)));
+    assert_eq!(parse("a_"), Ok(("", 11)));
+    assert_eq!(parse("Z_"), Ok(("", 62)));
+    assert_eq!(parse("10_"), Ok(("", 63)));
 }
 
 #[test]
@@ -86,20 +202,6 @@ fn test_parse_decimal_number() {
         parse("999999999999999999999999"),
         make_err("999999999999999999999999", ErrorKind::MapOpt)
     );
-}
-
-#[test]
-fn test_parse_base_62_number() {
-    fn parse(input: &str) -> IResult<&str, u64> {
-        simplify_result(super::parse_base62_number(Context::new(input, &RefCell::default())))
-    }
-
-    assert_eq!(parse("_"), Ok(("", 0)));
-    assert_eq!(parse("0_"), Ok(("", 1)));
-    assert_eq!(parse("7_"), Ok(("", 8)));
-    assert_eq!(parse("a_"), Ok(("", 11)));
-    assert_eq!(parse("Z_"), Ok(("", 62)));
-    assert_eq!(parse("10_"), Ok(("", 63)));
 }
 
 fn parse_symbol(input: &str) -> IResult<&str, Symbol> {

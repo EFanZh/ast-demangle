@@ -128,9 +128,11 @@ pub(super) fn display_path<'a>(
                 f,
                 "<{}>",
                 display_separated_list(
-                    generic_args
-                        .iter()
-                        .map(|generic_arg| { display_generic_arg(generic_arg, style, bound_lifetime_depth) }),
+                    generic_args.iter().map(|generic_arg| display_generic_arg(
+                        generic_arg,
+                        style,
+                        bound_lifetime_depth,
+                    )),
                     ", "
                 )
             )
@@ -164,7 +166,7 @@ pub(super) fn display_generic_arg<'a>(
     display_fn(move |f| match generic_arg {
         GenericArg::Lifetime(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
         GenericArg::Type(type_) => display_type(type_, style, bound_lifetime_depth).fmt(f),
-        GenericArg::Const(const_) => display_const(const_, style, bound_lifetime_depth).fmt(f),
+        GenericArg::Const(const_) => display_const(const_, style, bound_lifetime_depth, false).fmt(f),
     })
 }
 
@@ -192,7 +194,7 @@ pub(super) fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_dep
                 f,
                 "[{}; {}]",
                 display_type(type_, style, bound_lifetime_depth),
-                display_const(length, style, bound_lifetime_depth)
+                display_const(length, style, bound_lifetime_depth, true)
             )
         }
         Type::Slice(type_) => {
@@ -429,17 +431,22 @@ fn display_dyn_trait_assoc_binding<'a>(
     })
 }
 
-pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    fn write_integer<T: Display>(f: &mut Formatter, value: T, style: Style) -> fmt::Result {
-        write!(f, "{}", value)?;
+fn write_integer<T: Display>(f: &mut Formatter, value: T, style: Style) -> fmt::Result {
+    write!(f, "{}", value)?;
 
-        if matches!(style, Style::Long) {
-            f.write_str(any::type_name::<T>())
-        } else {
-            Ok(())
-        }
+    if matches!(style, Style::Long) {
+        f.write_str(any::type_name::<T>())
+    } else {
+        Ok(())
     }
+}
 
+pub(super) fn display_const<'a>(
+    const_: &'a Const,
+    style: Style,
+    bound_lifetime_depth: u64,
+    in_value: bool,
+) -> impl Display + 'a {
     display_fn(move |f| match const_ {
         Const::I8(value) => write_integer(f, *value, style),
         Const::U8(value) => write_integer(f, *value, style),
@@ -455,73 +462,113 @@ pub(super) fn display_const<'a>(const_: &'a Const, style: Style, bound_lifetime_
         Const::U64(value) => write_integer(f, *value, style),
         Const::Bool(value) => write!(f, "{}", value),
         Const::Char(value) => write!(f, "{:?}", value),
-        Const::Str(value) => write!(f, "*{}", display_const_str(value)),
+        Const::Str(value) => {
+            if in_value {
+                write!(f, "*{}", display_const_str(value))
+            } else {
+                write!(f, "{{*{}}}", display_const_str(value))
+            }
+        }
         Const::Ref(value) => {
             if let Const::Str(value) = value.as_ref() {
                 write!(f, "{}", display_const_str(value))
+            } else if in_value {
+                write!(f, "&{}", display_const(value, style, bound_lifetime_depth, true))
             } else {
-                write!(f, "&{}", display_const(value, style, bound_lifetime_depth))
+                write!(f, "{{&{}}}", display_const(value, style, bound_lifetime_depth, true))
             }
         }
-        Const::RefMut(value) => write!(f, "&mut {}", display_const(value, style, bound_lifetime_depth)),
-        Const::Array(items) => write!(
-            f,
-            "[{}]",
-            display_separated_list(
-                items
-                    .iter()
-                    .map(|item| display_const(item, style, bound_lifetime_depth)),
-                ", "
-            )
-        ),
-        Const::Tuple(items) => write!(
-            f,
-            "({})",
-            display_separated_list(
-                items
-                    .iter()
-                    .map(|item| display_const(item, style, bound_lifetime_depth)),
-                ", "
-            )
-        ),
-        Const::NamedStruct { path, fields } => {
-            write!(f, "{}", display_path(path, style, bound_lifetime_depth, false))?;
+        Const::RefMut(value) => {
+            let inner = display_const(value, style, bound_lifetime_depth, true);
 
-            match fields {
-                ConstFields::Unit => Ok(()),
-                ConstFields::Tuple(fields) => {
-                    write!(
-                        f,
-                        "({})",
-                        display_separated_list(
-                            fields
-                                .iter()
-                                .map(|field| display_const(field, style, bound_lifetime_depth)),
-                            ", "
-                        )
-                    )
-                }
-                ConstFields::Struct(fields) => {
-                    if fields.is_empty() {
-                        write!(f, "{{}}")
-                    } else {
-                        write!(
-                            f,
-                            "{{ {} }}",
-                            display_separated_list(
-                                fields.iter().map(|(name, value)| {
-                                    display_fn(move |f| {
-                                        write!(f, "{}: {}", name, display_const(value, style, bound_lifetime_depth))
-                                    })
-                                }),
-                                ", "
-                            )
-                        )
-                    }
-                }
+            if in_value {
+                write!(f, "&mut {}", inner)
+            } else {
+                write!(f, "{{&mut {}}}", inner)
+            }
+        }
+        Const::Array(items) => {
+            let inner = display_separated_list(
+                items
+                    .iter()
+                    .map(|item| display_const(item, style, bound_lifetime_depth, true)),
+                ", ",
+            );
+
+            if in_value {
+                write!(f, "[{}]", inner)
+            } else {
+                write!(f, "{{[{}]}}", inner)
+            }
+        }
+        Const::Tuple(items) => {
+            let inner = display_separated_list(
+                items
+                    .iter()
+                    .map(|item| display_const(item, style, bound_lifetime_depth, true)),
+                ", ",
+            );
+
+            if in_value {
+                write!(f, "({}", inner)?;
+
+                f.write_str(if items.len() == 1 { ",)" } else { ")" })
+            } else {
+                write!(f, "{{({}", inner)?;
+
+                f.write_str(if items.len() == 1 { ",)}" } else { ")}" })
+            }
+        }
+        Const::NamedStruct { path, fields } => {
+            let path = display_path(path, style, bound_lifetime_depth, true);
+            let fields = display_const_fields(fields, style, bound_lifetime_depth);
+
+            if in_value {
+                write!(f, "{}{}", path, fields)
+            } else {
+                write!(f, "{{{}{}}}", path, fields)
             }
         }
         Const::Placeholder => write!(f, "_"),
+    })
+}
+
+fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+    display_fn(move |f| match fields {
+        ConstFields::Unit => Ok(()),
+        ConstFields::Tuple(fields) => write!(
+            f,
+            "({})",
+            display_separated_list(
+                fields
+                    .iter()
+                    .map(|field| display_const(field, style, bound_lifetime_depth, true)),
+                ", "
+            )
+        ),
+        ConstFields::Struct(fields) => {
+            if fields.is_empty() {
+                write!(f, " {{}}")
+            } else {
+                write!(
+                    f,
+                    " {{ {} }}",
+                    display_separated_list(
+                        fields.iter().map(|(name, value)| {
+                            display_fn(move |f| {
+                                write!(
+                                    f,
+                                    "{}: {}",
+                                    name,
+                                    display_const(value, style, bound_lifetime_depth, true)
+                                )
+                            })
+                        }),
+                        ", "
+                    )
+                )
+            }
+        }
     })
 }
 
