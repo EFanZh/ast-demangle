@@ -69,17 +69,7 @@ fn parse_path<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<P
         delimited(tag("I"), parse_path.and(many0(parse_generic_arg)), tag("E"))
             .map(|(path, generic_args)| Path::Generic { path, generic_args }),
     ))
-    .map(|result| {
-        let result = Rc::new(result);
-
-        context
-            .back_ref_table
-            .borrow_mut()
-            .paths
-            .insert(context.index, Rc::clone(&result));
-
-        result
-    })
+    .map(Rc::new)
     .or(map_opt(parse_back_ref, |back_ref| {
         let mut back_ref_table = context.back_ref_table.borrow_mut();
         let result = Rc::clone(back_ref_table.paths.get(&back_ref)?);
@@ -88,6 +78,15 @@ fn parse_path<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<P
 
         Some(result)
     }))
+    .map(|result| {
+        context
+            .back_ref_table
+            .borrow_mut()
+            .paths
+            .insert(context.index, Rc::clone(&result));
+
+        result
+    })
     .parse(context)
 }
 
@@ -173,17 +172,7 @@ fn parse_type<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<T
         preceded(tag("D"), parse_dyn_bounds.and(parse_lifetime))
             .map(|(dyn_bounds, lifetime)| Type::DynTrait { dyn_bounds, lifetime }),
     ))
-    .map(|result| {
-        let result = Rc::new(result);
-
-        context
-            .back_ref_table
-            .borrow_mut()
-            .types
-            .insert(context.index, Rc::clone(&result));
-
-        result
-    })
+    .map(Rc::new)
     .or(map_opt(parse_back_ref, |back_ref| {
         let mut back_ref_table = context.back_ref_table.borrow_mut();
         let result = Rc::clone(back_ref_table.types.get(&back_ref)?);
@@ -192,6 +181,15 @@ fn parse_type<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<T
 
         Some(result)
     }))
+    .map(|result| {
+        context
+            .back_ref_table
+            .borrow_mut()
+            .types
+            .insert(context.index, Rc::clone(&result));
+
+        result
+    })
     .parse(context)
 }
 
@@ -277,15 +275,7 @@ fn parse_dyn_trait_assoc_binding<'a, 'b>(
 }
 
 fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<Const<'a>>> {
-    map_opt(parse_back_ref, |back_ref| {
-        let mut back_ref_table = context.back_ref_table.borrow_mut();
-        let result = Rc::clone(back_ref_table.consts.get(&back_ref)?);
-
-        back_ref_table.consts.insert(context.index, Rc::clone(&result));
-
-        Some(result)
-    })
-    .or(alt((
+    alt((
         preceded(tag("a"), parse_const_int.map(Const::I8)),
         preceded(tag("h"), parse_const_int.map(Const::U8)),
         preceded(tag("i"), parse_const_int.map(Const::Isize)),
@@ -319,9 +309,16 @@ fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<
             .map(|(path, fields)| Const::NamedStruct { path, fields }),
         tag("p").map(|_| Const::Placeholder),
     ))
-    .map(|result| {
-        let result = Rc::new(result);
+    .map(Rc::new)
+    .or(map_opt(parse_back_ref, |back_ref| {
+        let mut back_ref_table = context.back_ref_table.borrow_mut();
+        let result = Rc::clone(back_ref_table.consts.get(&back_ref)?);
 
+        back_ref_table.consts.insert(context.index, Rc::clone(&result));
+
+        Some(result)
+    }))
+    .map(|result| {
         context
             .back_ref_table
             .borrow_mut()
@@ -329,7 +326,7 @@ fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<
             .insert(context.index, Rc::clone(&result));
 
         result
-    }))
+    })
     .parse(context)
 }
 
