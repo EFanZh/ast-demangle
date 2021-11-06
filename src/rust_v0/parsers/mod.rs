@@ -71,12 +71,7 @@ fn parse_path<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<P
     ))
     .map(Rc::new)
     .or(map_opt(parse_back_ref, |back_ref| {
-        let mut back_ref_table = context.back_ref_table.borrow_mut();
-        let result = Rc::clone(back_ref_table.paths.get(&back_ref)?);
-
-        back_ref_table.paths.insert(context.index, Rc::clone(&result));
-
-        Some(result)
+        context.back_ref_table.borrow().paths.get(&back_ref).cloned()
     }))
     .map(|result| {
         context
@@ -174,12 +169,7 @@ fn parse_type<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<T
     ))
     .map(Rc::new)
     .or(map_opt(parse_back_ref, |back_ref| {
-        let mut back_ref_table = context.back_ref_table.borrow_mut();
-        let result = Rc::clone(back_ref_table.types.get(&back_ref)?);
-
-        back_ref_table.types.insert(context.index, Rc::clone(&result));
-
-        Some(result)
+        context.back_ref_table.borrow().types.get(&back_ref).cloned()
     }))
     .map(|result| {
         context
@@ -311,12 +301,7 @@ fn parse_const<'a, 'b>(context: Context<'a, 'b>) -> IResult<Context<'a, 'b>, Rc<
     ))
     .map(Rc::new)
     .or(map_opt(parse_back_ref, |back_ref| {
-        let mut back_ref_table = context.back_ref_table.borrow_mut();
-        let result = Rc::clone(back_ref_table.consts.get(&back_ref)?);
-
-        back_ref_table.consts.insert(context.index, Rc::clone(&result));
-
-        Some(result)
+        context.back_ref_table.borrow().consts.get(&back_ref).cloned()
     }))
     .map(|result| {
         context
