@@ -1,14 +1,11 @@
 //! Tools for demangling symbols using
 //! [Rust v0 syntax]((https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#syntax-of-mangled-names)).
 
-use crate::rust_v0::context::Context;
 use crate::rust_v0::display::Style;
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::fmt::{self, Display, Formatter};
 use std::rc::Rc;
 
-mod context;
 pub mod display;
 mod parsers;
 
@@ -44,9 +41,7 @@ impl<'a> Symbol<'a> {
             .or_else(|| input.strip_prefix("__R"))
             .ok_or(ParseSymbolError)?;
 
-        parsers::parse_symbol(Context::new(input, &RefCell::default()))
-            .map(|(context, result)| (result, context.data))
-            .map_err(|_| ParseSymbolError)
+        parsers::parse_symbol(input).map_err(|()| ParseSymbolError)
     }
 }
 

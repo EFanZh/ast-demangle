@@ -1,24 +1,11 @@
-use crate::rust_v0::context::Context;
+use crate::mini_parser::Parser;
 use crate::rust_v0::display::{self, Style};
+use crate::rust_v0::parsers::{Context, IndexedStr};
 use crate::rust_v0::{
     Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg, Identifier, ImplPath, Path, Symbol,
     Type,
 };
-use nom::error::{Error, ErrorKind};
-use nom::IResult;
-use std::borrow::Cow;
-use std::cell::RefCell;
 use std::rc::Rc;
-
-fn make_err<T>(input: &str, error_kind: ErrorKind) -> IResult<&str, T> {
-    Err(nom::Err::Error(Error::new(input, error_kind)))
-}
-
-fn simplify_result<'a, T>(result: IResult<Context<'a, '_>, T>) -> IResult<&'a str, T> {
-    result
-        .map(|(rest, result)| (rest.data, result))
-        .map_err(|e| e.map(|e| Error::new(e.input.data, e.code)))
-}
 
 fn id(name: &str) -> Identifier {
     Identifier {
@@ -27,46 +14,46 @@ fn id(name: &str) -> Identifier {
     }
 }
 
+fn simplify_parser<'a, P, T>(mut parser: P) -> impl FnMut(&'a str) -> Result<(T, &'a str), ()>
+where
+    P: Parser<IndexedStr<'a>, Context<'a>, Output = T>,
+{
+    move |input| {
+        parser
+            .parse(IndexedStr::new(input), &mut Context::default())
+            .map(|(result, suffix)| (result, suffix.data))
+    }
+}
+
 #[test]
 fn test_parse_undisambiguated_identifier() {
-    fn parse(input: &str) -> IResult<&str, Cow<str>> {
-        simplify_result(super::parse_undisambiguated_identifier(Context::new(
-            input,
-            &RefCell::default(),
-        )))
-    }
+    let mut parse = simplify_parser(super::parse_undisambiguated_identifier);
 
-    assert_eq!(parse(""), make_err("", ErrorKind::Digit));
+    assert_eq!(parse(""), Err(()));
 
-    assert_eq!(parse("6_123foo"), Ok(("", "123foo".into())));
-    assert_eq!(parse("3bar"), Ok(("", "bar".into())));
+    assert_eq!(parse("6_123foo"), Ok(("123foo".into(), "")));
+    assert_eq!(parse("3bar"), Ok(("bar".into(), "")));
 
     assert_eq!(
         parse("u30____7hkackfecea1cbdathfdh9hlq6y"),
-        Ok(("", "საჭმელად_გემრიელი_სადილი".into()))
+        Ok(("საჭმელად_გემრიელი_სადილი".into(), ""))
     );
 }
 
 #[test]
 fn test_parse_abi() {
-    fn parse(input: &str) -> IResult<&str, Abi> {
-        let back_ref_table = RefCell::default();
+    let mut parse = simplify_parser(super::parse_abi);
 
-        simplify_result(super::parse_abi(Context::new(input, &back_ref_table)))
-    }
+    assert_eq!(parse(""), Err(()));
 
-    assert_eq!(parse(""), make_err("", ErrorKind::Digit));
-
-    assert_eq!(parse("CDEF"), Ok(("DEF", Abi::C)));
-    assert_eq!(parse("3abcdef"), Ok(("def", Abi::Named("abc".into()))));
+    assert_eq!(parse("CDEF"), Ok((Abi::C, "DEF")));
+    assert_eq!(parse("3abcdef"), Ok((Abi::Named("abc".into()), "def")));
 }
 
 #[track_caller]
 fn check_parse_const(input: &str, expected: &str) {
-    let back_ref_table = RefCell::default();
-
     let result = display::display_const(
-        &super::parse_const(Context::new(input, &back_ref_table)).ok().unwrap().1,
+        &simplify_parser(super::parse_const)(input).unwrap().0,
         Style::Normal,
         0,
         false,
@@ -164,48 +151,41 @@ fn test_parse_const_adt() {
 
 #[test]
 fn test_parse_base62_number() {
-    fn parse(input: &str) -> IResult<&str, u64> {
-        simplify_result(super::parse_base62_number(Context::new(input, &RefCell::default())))
-    }
+    let mut parse = simplify_parser(super::parse_base62_number);
 
-    assert_eq!(parse("_"), Ok(("", 0)));
-    assert_eq!(parse("0_"), Ok(("", 1)));
-    assert_eq!(parse("7_"), Ok(("", 8)));
-    assert_eq!(parse("a_"), Ok(("", 11)));
-    assert_eq!(parse("Z_"), Ok(("", 62)));
-    assert_eq!(parse("10_"), Ok(("", 63)));
+    assert_eq!(parse("_"), Ok((0, "")));
+    assert_eq!(parse("0_"), Ok((1, "")));
+    assert_eq!(parse("7_"), Ok((8, "")));
+    assert_eq!(parse("a_"), Ok((11, "")));
+    assert_eq!(parse("Z_"), Ok((62, "")));
+    assert_eq!(parse("10_"), Ok((63, "")));
 }
 
 #[test]
 fn test_parse_decimal_number() {
-    fn parse(input: &str) -> IResult<&str, u64> {
-        simplify_result(super::parse_decimal_number(Context::new(input, &RefCell::default())))
-    }
+    let mut parse = simplify_parser(super::parse_decimal_number);
 
-    assert_eq!(parse(""), make_err("", ErrorKind::Digit));
+    assert_eq!(parse(""), Err(()));
 
-    assert_eq!(parse("0"), Ok(("", 0)));
-    assert_eq!(parse("7"), Ok(("", 7)));
-    assert_eq!(parse("c"), make_err("c", ErrorKind::Digit));
+    assert_eq!(parse("0"), Ok((0, "")));
+    assert_eq!(parse("7"), Ok((7, "")));
+    assert_eq!(parse("c"), Err(()));
 
-    assert_eq!(parse("00"), Ok(("0", 0)));
-    assert_eq!(parse("07"), Ok(("7", 0)));
-    assert_eq!(parse("0c"), Ok(("c", 0)));
-    assert_eq!(parse("70"), Ok(("", 70)));
-    assert_eq!(parse("77"), Ok(("", 77)));
-    assert_eq!(parse("7c"), Ok(("c", 7)));
-    assert_eq!(parse("c0"), make_err("c0", ErrorKind::Digit));
-    assert_eq!(parse("c7"), make_err("c7", ErrorKind::Digit));
-    assert_eq!(parse("cc"), make_err("cc", ErrorKind::Digit));
+    assert_eq!(parse("00"), Ok((0, "0",)));
+    assert_eq!(parse("07"), Ok((0, "7",)));
+    assert_eq!(parse("0c"), Ok((0, "c",)));
+    assert_eq!(parse("70"), Ok((70, "",)));
+    assert_eq!(parse("77"), Ok((77, "",)));
+    assert_eq!(parse("7c"), Ok((7, "c",)));
+    assert_eq!(parse("c0"), Err(()));
+    assert_eq!(parse("c7"), Err(()));
+    assert_eq!(parse("cc"), Err(()));
 
-    assert_eq!(
-        parse("999999999999999999999999"),
-        make_err("999999999999999999999999", ErrorKind::MapOpt)
-    );
+    assert_eq!(parse("999999999999999999999999"), Err(()));
 }
 
-fn parse_symbol(input: &str) -> IResult<&str, Symbol> {
-    simplify_result(super::parse_symbol(Context::new(input, &RefCell::default())))
+fn parse_symbol(input: &str) -> Result<(Symbol, &str), ()> {
+    super::parse_symbol(input)
 }
 
 #[test]
@@ -213,7 +193,6 @@ fn test_rustc_demangle_crate_with_leading_digit() {
     assert_eq!(
         parse_symbol("NvC6_123foo3bar"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -230,7 +209,8 @@ fn test_rustc_demangle_crate_with_leading_digit() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -240,7 +220,6 @@ fn test_rustc_demangle_utf8_idents() {
     assert_eq!(
         parse_symbol("NqCs4fqI2P2rA04_11utf8_identsu30____7hkackfecea1cbdathfdh9hlq6y"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -257,7 +236,8 @@ fn test_rustc_demangle_utf8_idents() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -267,7 +247,6 @@ fn test_rustc_demangle_closure_1() {
     assert_eq!(
         parse_symbol("NCNCNgCs6DXkGYLi8lr_2cc5spawn00B5_"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -306,7 +285,8 @@ fn test_rustc_demangle_closure_1() {
                     })
                     .into()
                 )
-            }
+            },
+            "",
         ))
     );
 }
@@ -329,7 +309,6 @@ fn test_rustc_demangle_closure_2() {
             "NCINkXs25_NgCsbmNqQUJIY6D_4core5sliceINyB9_4IterhENuNgNoBb_4iter8iterator8Iterator9rpositionNCNgNpB9_6memchr7memrchrs_0E0Bb_"
         ),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -412,7 +391,8 @@ fn test_rustc_demangle_closure_2() {
                 }
                 .into(),
                 instantiating_crate: Some(crate_root)
-            }
+            },
+            "",
         ))
     );
 }
@@ -422,7 +402,6 @@ fn test_rustc_demangle_dyn_trait() {
     assert_eq!(
         parse_symbol("INbNbCskIICzLVDPPb_5alloc5alloc8box_freeDINbNiB4_5boxed5FnBoxuEp6OutputuEL_ECs1iopQbuBiw2_3std"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Generic {
@@ -496,7 +475,8 @@ fn test_rustc_demangle_dyn_trait() {
                     })
                     .into()
                 )
-            }
+            },
+            "",
         ))
     );
 }
@@ -506,7 +486,6 @@ fn test_rustc_demangle_const_generics_usize_123() {
     assert_eq!(
         parse_symbol("INtC8arrayvec8ArrayVechKj7b_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Generic {
@@ -530,7 +509,8 @@ fn test_rustc_demangle_const_generics_usize_123() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -540,7 +520,6 @@ fn test_rustc_demangle_const_generics_u8_11() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_8UnsignedKhb_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -575,7 +554,8 @@ fn test_rustc_demangle_const_generics_u8_11() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -585,7 +565,6 @@ fn test_rustc_demangle_const_generics_i16_152() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_6SignedKs98_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -620,7 +599,8 @@ fn test_rustc_demangle_const_generics_i16_152() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -630,7 +610,6 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_6SignedKanb_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -665,7 +644,8 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -675,7 +655,6 @@ fn test_rustc_demangle_const_generics_bool_false() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4BoolKb0_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -710,7 +689,8 @@ fn test_rustc_demangle_const_generics_bool_false() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -720,7 +700,6 @@ fn test_rustc_demangle_const_generics_bool_true() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4BoolKb1_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -755,7 +734,8 @@ fn test_rustc_demangle_const_generics_bool_true() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -765,7 +745,6 @@ fn test_rustc_demangle_const_generics_char_v() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4CharKc76_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -800,7 +779,8 @@ fn test_rustc_demangle_const_generics_char_v() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -810,7 +790,6 @@ fn test_rustc_demangle_const_generics_char_lf() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4CharKca_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -845,7 +824,8 @@ fn test_rustc_demangle_const_generics_char_lf() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -855,7 +835,6 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
     assert_eq!(
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4CharKc2202_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -890,7 +869,8 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -900,7 +880,6 @@ fn test_rustc_demangle_const_generics_placeholder() {
     assert_eq!(
         parse_symbol("NvNvMCs4fqI2P2rA04_13const_genericINtB4_3FooKpE3foo3FOO"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -951,7 +930,8 @@ fn test_rustc_demangle_const_generics_placeholder() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -969,7 +949,6 @@ fn test_rustc_demangle_exponential_explosion() {
     assert_eq!(
         parse_symbol("MC0TTTTTTpB8_EB7_EB6_EB5_EB4_EB3_E"),
         Ok((
-            "",
             Symbol {
                 version: None,
                 path: Path::InherentImpl {
@@ -985,7 +964,8 @@ fn test_rustc_demangle_exponential_explosion() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            "",
         ))
     );
 }
@@ -995,7 +975,6 @@ fn test_rustc_demangle_thinlto() {
     assert_eq!(
         parse_symbol("C3foo.llvm.9D1C9369"),
         Ok((
-            ".llvm.9D1C9369",
             Symbol {
                 version: None,
                 path: Path::CrateRoot(Identifier {
@@ -1004,14 +983,14 @@ fn test_rustc_demangle_thinlto() {
                 })
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            ".llvm.9D1C9369",
         ))
     );
 
     assert_eq!(
         parse_symbol("C3foo.llvm.9D1C9369@@16"),
         Ok((
-            ".llvm.9D1C9369@@16",
             Symbol {
                 version: None,
                 path: Path::CrateRoot(Identifier {
@@ -1020,14 +999,14 @@ fn test_rustc_demangle_thinlto() {
                 })
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            ".llvm.9D1C9369@@16",
         ))
     );
 
     assert_eq!(
         parse_symbol("NvC9backtrace3foo.llvm.A5310EB9"),
         Ok((
-            ".llvm.A5310EB9",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -1044,7 +1023,8 @@ fn test_rustc_demangle_thinlto() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            ".llvm.A5310EB9",
         ))
     );
 }
@@ -1054,7 +1034,6 @@ fn test_rustc_demangle_extra_suffix() {
     assert_eq!(
         parse_symbol("NvNtNtNtNtCs92dm3009vxr_4rand4rngs7adapter9reseeding4fork23FORK_HANDLER_REGISTERED.0.0"),
         Ok((
-            ".0.0",
             Symbol {
                 version: None,
                 path: Path::Nested {
@@ -1103,7 +1082,8 @@ fn test_rustc_demangle_extra_suffix() {
                 }
                 .into(),
                 instantiating_crate: None
-            }
+            },
+            ".0.0",
         ))
     );
 }

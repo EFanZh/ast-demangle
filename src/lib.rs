@@ -123,6 +123,7 @@
     clippy::verbose_file_reads,
     // clippy::wildcard_dependencies,
 )]
-#![allow(clippy::non_ascii_literal)]
+#![allow(clippy::module_name_repetitions, clippy::non_ascii_literal)]
 
+mod mini_parser;
 pub mod rust_v0;

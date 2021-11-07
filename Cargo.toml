@@ -10,7 +10,6 @@ repository = "https://github.com/EFanZh/ast-demangle"
 version = "0.2.0"
 
 [dependencies]
-nom = "7"
 num-traits = "0.2"
 punycode = "0.4"
 
