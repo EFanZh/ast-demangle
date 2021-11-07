@@ -6,7 +6,6 @@ use crate::rust_v0::{
 };
 use std::any;
 use std::cell::Cell;
-use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Display, Formatter, Write};
 
 /// Denote the style for displaying the symbol.
@@ -447,29 +446,29 @@ pub(super) fn display_const<'a>(
     bound_lifetime_depth: u64,
     in_value: bool,
 ) -> impl Display + 'a {
-    display_fn(move |f| match const_ {
-        Const::I8(value) => write_integer(f, *value, style),
-        Const::U8(value) => write_integer(f, *value, style),
-        Const::Isize(value) => write_integer(f, *value, style),
-        Const::Usize(value) => write_integer(f, *value, style),
-        Const::I32(value) => write_integer(f, *value, style),
-        Const::U32(value) => write_integer(f, *value, style),
-        Const::I128(value) => write_integer(f, *value, style),
-        Const::U128(value) => write_integer(f, *value, style),
-        Const::I16(value) => write_integer(f, *value, style),
-        Const::U16(value) => write_integer(f, *value, style),
-        Const::I64(value) => write_integer(f, *value, style),
-        Const::U64(value) => write_integer(f, *value, style),
+    display_fn(move |f| match *const_ {
+        Const::I8(value) => write_integer(f, value, style),
+        Const::U8(value) => write_integer(f, value, style),
+        Const::Isize(value) => write_integer(f, value, style),
+        Const::Usize(value) => write_integer(f, value, style),
+        Const::I32(value) => write_integer(f, value, style),
+        Const::U32(value) => write_integer(f, value, style),
+        Const::I128(value) => write_integer(f, value, style),
+        Const::U128(value) => write_integer(f, value, style),
+        Const::I16(value) => write_integer(f, value, style),
+        Const::U16(value) => write_integer(f, value, style),
+        Const::I64(value) => write_integer(f, value, style),
+        Const::U64(value) => write_integer(f, value, style),
         Const::Bool(value) => write!(f, "{}", value),
         Const::Char(value) => write!(f, "{:?}", value),
-        Const::Str(value) => {
+        Const::Str(ref value) => {
             if in_value {
                 write!(f, "*{}", display_const_str(value))
             } else {
                 write!(f, "{{*{}}}", display_const_str(value))
             }
         }
-        Const::Ref(value) => {
+        Const::Ref(ref value) => {
             if let Const::Str(value) = value.as_ref() {
                 write!(f, "{}", display_const_str(value))
             } else if in_value {
@@ -478,7 +477,7 @@ pub(super) fn display_const<'a>(
                 write!(f, "{{&{}}}", display_const(value, style, bound_lifetime_depth, true))
             }
         }
-        Const::RefMut(value) => {
+        Const::RefMut(ref value) => {
             let inner = display_const(value, style, bound_lifetime_depth, true);
 
             if in_value {
@@ -487,7 +486,7 @@ pub(super) fn display_const<'a>(
                 write!(f, "{{&mut {}}}", inner)
             }
         }
-        Const::Array(items) => {
+        Const::Array(ref items) => {
             let inner = display_separated_list(
                 items
                     .iter()
@@ -501,7 +500,7 @@ pub(super) fn display_const<'a>(
                 write!(f, "{{[{}]}}", inner)
             }
         }
-        Const::Tuple(items) => {
+        Const::Tuple(ref items) => {
             let inner = display_separated_list(
                 items
                     .iter()
@@ -519,7 +518,7 @@ pub(super) fn display_const<'a>(
                 f.write_str(if items.len() == 1 { ",)}" } else { ")}" })
             }
         }
-        Const::NamedStruct { path, fields } => {
+        Const::NamedStruct { ref path, ref fields } => {
             let path = display_path(path, style, bound_lifetime_depth, true);
             let fields = display_const_fields(fields, style, bound_lifetime_depth);
 
@@ -572,36 +571,9 @@ fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetim
     })
 }
 
-#[allow(clippy::missing_panics_doc)]
 #[must_use]
-pub(super) fn display_const_str<'a>(const_str: &ConstStr<'a>) -> impl Display + 'a {
-    fn decode_hex_digit(digit: u8) -> u8 {
-        match digit {
-            b'0'..=b'9' => digit - b'0',
-            _ => digit - (b'a' - 10),
-        }
-    }
-
-    let decoded = String::from_utf8(
-        const_str
-            .0
-            .as_bytes()
-            .chunks_exact(2)
-            .map(|value| {
-                let [high, low]: [u8; 2] = value.try_into().unwrap();
-
-                (decode_hex_digit(high) << 4) | decode_hex_digit(low)
-            })
-            .collect(),
-    );
-
-    display_fn(move |f| {
-        if let Ok(decoded) = &decoded {
-            write!(f, "{:?}", decoded)
-        } else {
-            Err(fmt::Error)
-        }
-    })
+pub(super) fn display_const_str(const_str: &ConstStr) -> impl Display + '_ {
+    display_fn(move |f| write!(f, "{:?}", const_str.0))
 }
 
 #[cfg(test)]

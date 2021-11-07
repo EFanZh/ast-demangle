@@ -11,7 +11,6 @@ use crate::rust_v0::{
 use num_traits::{CheckedNeg, PrimInt};
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::rc::Rc;
 use std::str;
 
@@ -41,7 +40,7 @@ impl Find for IndexedStr<'_> {
     type Item = char;
 
     fn find(&self, pattern: impl FnMut(Self::Item) -> bool) -> usize {
-        self.data.find(pattern).unwrap_or_else(|| self.data.len())
+        Find::find(&self.data, pattern)
     }
 }
 
@@ -414,9 +413,31 @@ where
     .parse(input, context)
 }
 
-fn parse_const_str<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(ConstStr<'a>, IndexedStr<'a>), ()> {
+fn parse_const_str<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(ConstStr, IndexedStr<'a>), ()> {
+    fn decode_hex_digit(digit: u8) -> u8 {
+        match digit {
+            b'0'..=b'9' => digit - b'0',
+            _ => digit - (b'a' - 10),
+        }
+    }
+
     map_opt(terminated(lower_hex_digit0, tag("_")), |s: &str| {
-        (s.len() % 2 == 0).then(|| ConstStr(s))
+        if s.len() % 2 == 0 {
+            String::from_utf8(
+                s.as_bytes()
+                    .chunks_exact(2)
+                    .map(|value| {
+                        let [high, low]: [u8; 2] = value.try_into().unwrap();
+
+                        (decode_hex_digit(high) << 4) | decode_hex_digit(low)
+                    })
+                    .collect(),
+            )
+            .ok()
+            .map(ConstStr)
+        } else {
+            None
+        }
     })
     .parse(input, context)
 }

@@ -275,7 +275,7 @@ pub enum Const<'a> {
     U64(u64),
     Bool(bool),
     Char(char),
-    Str(ConstStr<'a>),
+    Str(ConstStr),
     Ref(Rc<Const<'a>>),
     RefMut(Rc<Const<'a>>),
     Array(Vec<Rc<Const<'a>>>),
@@ -295,7 +295,7 @@ pub enum ConstFields<'a> {
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ConstStr<'a>(&'a str);
+pub struct ConstStr(String);
 
 impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.

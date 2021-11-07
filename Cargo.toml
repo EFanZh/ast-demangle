@@ -2,7 +2,7 @@
 authors = ["EFanZh <efanzh@gmail.com>"]
 categories = ["compilers"]
 description = "Parses mangled names and produces structured results."
-edition = "2018"
+edition = "2021"
 keywords = ["demangle"]
 license = "MIT"
 name = "ast-demangle"
