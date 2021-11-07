@@ -5,7 +5,7 @@
 //! Example:
 //!
 //! ```rust
-//! use ast_demangle::rust_v0::display::Style;
+//! use ast_demangle::rust_v0::DisplayStyle;
 //! use ast_demangle::rust_v0::{Identifier, Path, Symbol};
 //!
 //! let mangled_name = "_RNvNtCs6GSVXm7oiwY_5regex4utf811decode_utf8.llvm.1119170478327948870";
@@ -20,13 +20,13 @@
 //! // To omit the crate hash, use the alternate display format.
 //! assert_eq!(format!("{:#}", symbol), "regex::utf8::decode_utf8");
 //!
-//! // Use `Symbol::display` and `Style` to specify the display style explicitly.
+//! // Use `Symbol::display` and `DisplayStyle` to specify the display style explicitly.
 //!
-//! assert_eq!(format!("{}", symbol.display(Style::Short)), "decode_utf8");
-//! assert_eq!(format!("{}", symbol.display(Style::Normal)), "regex::utf8::decode_utf8");
+//! assert_eq!(format!("{}", symbol.display(DisplayStyle::Short)), "decode_utf8");
+//! assert_eq!(format!("{}", symbol.display(DisplayStyle::Normal)), "regex::utf8::decode_utf8");
 //!
 //! assert_eq!(
-//!     format!("{}", symbol.display(Style::Long)),
+//!     format!("{}", symbol.display(DisplayStyle::Long)),
 //!     "regex[4df147058689a776]::utf8::decode_utf8"
 //! );
 //!

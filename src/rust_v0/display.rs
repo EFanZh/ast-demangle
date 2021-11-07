@@ -1,8 +1,7 @@
 //! Pretty printing demangled symbol names.
 
 use crate::rust_v0::{
-    Abi, BasicType, Const, ConstFields, ConstStr, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path,
-    Type,
+    Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type,
 };
 use std::any;
 use std::cell::Cell;
@@ -51,12 +50,7 @@ fn display_separated_list(values: impl IntoIterator<Item = impl Display>, separa
     })
 }
 
-pub(super) fn display_path<'a>(
-    path: &'a Path,
-    style: Style,
-    bound_lifetime_depth: u64,
-    in_value: bool,
-) -> impl Display + 'a {
+pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
     display_fn(move |f| match path {
         Path::CrateRoot(name) => match style {
             Style::Short | Style::Normal => f.write_str(&name.name),
@@ -157,7 +151,7 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
     })
 }
 
-pub(super) fn display_generic_arg<'a>(
+pub fn display_generic_arg<'a>(
     generic_arg: &'a GenericArg,
     style: Style,
     bound_lifetime_depth: u64,
@@ -184,7 +178,7 @@ fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Displ
     })
 }
 
-pub(super) fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+pub fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| match type_ {
         Type::Basic(basic_type) => display_basic_type(*basic_type).fmt(f),
         Type::Named(path) => display_path(path, style, bound_lifetime_depth, false).fmt(f),
@@ -254,7 +248,7 @@ pub(super) fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_dep
     })
 }
 
-pub(super) fn display_basic_type(basic_type: BasicType) -> impl Display {
+pub fn display_basic_type(basic_type: BasicType) -> impl Display {
     display_fn(move |f| {
         f.write_str(match basic_type {
             BasicType::I8 => "i8",
@@ -282,7 +276,7 @@ pub(super) fn display_basic_type(basic_type: BasicType) -> impl Display {
     })
 }
 
-pub(super) fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
+pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     display_fn(move |f| {
         if fn_sig.bound_lifetimes != 0 {
             write!(f, "{} ", display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth))?;
@@ -440,7 +434,7 @@ fn write_integer<T: Display>(f: &mut Formatter, value: T, style: Style) -> fmt::
     }
 }
 
-pub(super) fn display_const<'a>(
+pub fn display_const<'a>(
     const_: &'a Const,
     style: Style,
     bound_lifetime_depth: u64,
@@ -463,14 +457,14 @@ pub(super) fn display_const<'a>(
         Const::Char(value) => write!(f, "{:?}", value),
         Const::Str(ref value) => {
             if in_value {
-                write!(f, "*{}", display_const_str(value))
+                write!(f, "*{:?}", value)
             } else {
-                write!(f, "{{*{}}}", display_const_str(value))
+                write!(f, "{{*{:?}}}", value)
             }
         }
         Const::Ref(ref value) => {
             if let Const::Str(value) = value.as_ref() {
-                write!(f, "{}", display_const_str(value))
+                write!(f, "{:?}", value)
             } else if in_value {
                 write!(f, "&{}", display_const(value, style, bound_lifetime_depth, true))
             } else {
@@ -569,11 +563,6 @@ fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetim
             }
         }
     })
-}
-
-#[must_use]
-pub(super) fn display_const_str(const_str: &ConstStr) -> impl Display + '_ {
-    display_fn(move |f| write!(f, "{:?}", const_str.0))
 }
 
 #[cfg(test)]

@@ -1,12 +1,12 @@
 //! Tools for demangling symbols using
 //! [Rust v0 syntax]((https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#syntax-of-mangled-names)).
 
-use crate::rust_v0::display::Style;
+pub use self::display::Style as DisplayStyle;
 use std::borrow::Cow;
 use std::fmt::{self, Display, Formatter};
 use std::rc::Rc;
 
-pub mod display;
+mod display;
 mod parsers;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,7 +22,7 @@ pub struct Symbol<'a> {
 impl<'a> Symbol<'a> {
     /// Returns an object that implements [`Display`] for printing the symbol.
     #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
         display::display_path(&self.path, style, 0, true)
     }
 
@@ -47,8 +47,12 @@ impl<'a> Symbol<'a> {
 
 impl Display for Symbol<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
+        self.display(if f.alternate() {
+            DisplayStyle::Normal
+        } else {
+            DisplayStyle::Long
+        })
+        .fmt(f)
     }
 }
 
@@ -82,15 +86,19 @@ pub enum Path<'a> {
 impl Path<'_> {
     /// Returns an object that implements [`Display`] for printing the path.
     #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
         display::display_path(self, style, 0, false)
     }
 }
 
 impl Display for Path<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
+        self.display(if f.alternate() {
+            DisplayStyle::Normal
+        } else {
+            DisplayStyle::Long
+        })
+        .fmt(f)
     }
 }
 
@@ -130,15 +138,19 @@ pub enum GenericArg<'a> {
 impl GenericArg<'_> {
     /// Returns an object that implements [`Display`] for printing the generic argument.
     #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
         display::display_generic_arg(self, style, 0)
     }
 }
 
 impl Display for GenericArg<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
+        self.display(if f.alternate() {
+            DisplayStyle::Normal
+        } else {
+            DisplayStyle::Long
+        })
+        .fmt(f)
     }
 }
 
@@ -160,15 +172,19 @@ pub enum Type<'a> {
 impl Type<'_> {
     /// Returns an object that implements [`Display`] for printing the type.
     #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
         display::display_type(self, style, 0)
     }
 }
 
 impl Display for Type<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
+        self.display(if f.alternate() {
+            DisplayStyle::Normal
+        } else {
+            DisplayStyle::Long
+        })
+        .fmt(f)
     }
 }
 
@@ -223,15 +239,19 @@ pub struct FnSig<'a> {
 impl FnSig<'_> {
     /// Returns an object that implements [`Display`] for printing the function signature.
     #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
         display::display_fn_sig(self, style, 0)
     }
 }
 
 impl Display for FnSig<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
+        self.display(if f.alternate() {
+            DisplayStyle::Normal
+        } else {
+            DisplayStyle::Long
+        })
+        .fmt(f)
     }
 }
 
@@ -275,7 +295,7 @@ pub enum Const<'a> {
     U64(u64),
     Bool(bool),
     Char(char),
-    Str(ConstStr),
+    Str(String),
     Ref(Rc<Const<'a>>),
     RefMut(Rc<Const<'a>>),
     Array(Vec<Rc<Const<'a>>>),
@@ -294,20 +314,21 @@ pub enum ConstFields<'a> {
     Struct(Vec<(Identifier<'a>, Rc<Const<'a>>)>),
 }
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ConstStr(String);
-
 impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.
     #[must_use]
-    pub fn display(&self, style: Style) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
         display::display_const(self, style, 0, true)
     }
 }
 
 impl Display for Const<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.display(if f.alternate() { Style::Normal } else { Style::Long })
-            .fmt(f)
+        self.display(if f.alternate() {
+            DisplayStyle::Normal
+        } else {
+            DisplayStyle::Long
+        })
+        .fmt(f)
     }
 }

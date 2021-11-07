@@ -3,8 +3,8 @@ use crate::mini_parser::input::{Find, SplitAt, StripPrefix};
 use crate::mini_parser::parsers::{alphanumeric0, digit1, lower_hex_digit0, tag, take};
 use crate::mini_parser::Parser;
 use crate::rust_v0::{
-    Abi, BasicType, Const, ConstFields, ConstStr, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg,
-    Identifier, ImplPath, Path, Symbol, Type,
+    Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier,
+    ImplPath, Path, Symbol, Type,
 };
 use num_traits::{CheckedNeg, PrimInt};
 use std::borrow::Cow;
@@ -409,29 +409,29 @@ where
     .parse(input, context)
 }
 
-fn parse_const_str<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(ConstStr, IndexedStr<'a>), ()> {
-    fn decode_hex_digit(digit: u8) -> u8 {
+fn parse_const_str<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(String, IndexedStr<'a>), ()> {
+    fn decode_hex_digit(digit: u8) -> Option<u8> {
         match digit {
-            b'0'..=b'9' => digit - b'0',
-            _ => digit - (b'a' - 10),
+            b'0'..=b'9' => Some(digit - b'0'),
+            b'a'..=b'z' => Some(digit - (b'a' - 10)),
+            _ => None,
         }
     }
 
     terminated(lower_hex_digit0, tag('_'))
         .map_opt(|s: &str| {
             if s.len() % 2 == 0 {
-                String::from_utf8(
-                    s.as_bytes()
-                        .chunks_exact(2)
-                        .map(|value| {
-                            let [high, low]: [u8; 2] = value.try_into().unwrap();
+                if let Some(s2) = s.as_bytes().get(1..) {
+                    let mut bytes = Vec::with_capacity(s.len() / 2);
 
-                            (decode_hex_digit(high) << 4) | decode_hex_digit(low)
-                        })
-                        .collect(),
-                )
-                .ok()
-                .map(ConstStr)
+                    for (high, low) in s.bytes().zip(s2.iter().copied()).step_by(2) {
+                        bytes.push((decode_hex_digit(high)? << 4) | decode_hex_digit(low)?);
+                    }
+
+                    String::from_utf8(bytes).ok()
+                } else {
+                    Some(String::new())
+                }
             } else {
                 None
             }
