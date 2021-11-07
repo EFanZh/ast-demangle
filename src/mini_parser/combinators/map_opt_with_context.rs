@@ -5,7 +5,7 @@ pub struct MapOptWithContext<P, F> {
     f: F,
 }
 
-impl<P, F, I, C, U> Parser<I, C> for MapOptWithContext<P, F>
+impl<I, C, P, F, U> Parser<I, C> for MapOptWithContext<P, F>
 where
     P: Parser<I, C>,
     F: FnMut(P::Output, &mut C) -> Option<U>,
@@ -18,7 +18,7 @@ where
         Ok(((self.f)(output, context).ok_or(())?, input))
     }
 }
-pub fn map_opt_with_context<P, F, I, C, U>(parser: P, f: F) -> MapOptWithContext<P, F>
+pub fn map_opt_with_context<I, C, P, F, U>(parser: P, f: F) -> MapOptWithContext<P, F>
 where
     P: Parser<I, C>,
     F: FnMut(P::Output, &mut C) -> Option<U>,
