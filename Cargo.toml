@@ -15,6 +15,3 @@ punycode = "0.4"
 
 [dev-dependencies]
 rustc-demangle = "0.1"
-
-[workspace]
-members = ["tools/verify-against-rustc-demangle"]

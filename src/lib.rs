@@ -75,7 +75,7 @@
     trivial_numeric_casts,
     unsafe_code,
     unsafe_op_in_unsafe_fn,
-    unused_crate_dependencies,
+    // unused_crate_dependencies, // False positive.
     unused_extern_crates,
     unused_import_braces,
     unused_lifetimes,
