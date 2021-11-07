@@ -1,4 +1,4 @@
-use crate::mini_parser::combinators::{InspectWithContext, MapOptWithContext};
+use crate::mini_parser::combinators::{InspectWithContext, Many0, MapOptWithContext};
 
 use self::combinators::{And, FlatMap, Map, MapOpt, Opt, Or};
 
@@ -59,6 +59,14 @@ pub trait Parser<I, C> {
         F: FnMut(&Self::Output, &mut C),
     {
         combinators::inspect_with_context(self, f)
+    }
+
+    fn many0(self) -> Many0<Self>
+    where
+        Self: Sized,
+        I: Clone,
+    {
+        combinators::many0(self)
     }
 
     fn opt(self) -> Opt<Self>

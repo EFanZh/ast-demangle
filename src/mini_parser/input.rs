@@ -32,10 +32,10 @@ pub trait StripPrefix<P>: Sized {
     fn strip_prefix(self, prefix: P) -> Option<(Self::Prefix, Self)>;
 }
 
-impl<'a, 'b> StripPrefix<&'b str> for &'a str {
+impl<'a> StripPrefix<char> for &'a str {
     type Prefix = Self;
 
-    fn strip_prefix(self, prefix: &'b str) -> Option<(Self::Prefix, Self)> {
-        self.starts_with(prefix).then(|| self.split_at(prefix.len()))
+    fn strip_prefix(self, prefix: char) -> Option<(Self::Prefix, Self)> {
+        self.starts_with(prefix).then(|| self.split_at(prefix.len_utf8()))
     }
 }
