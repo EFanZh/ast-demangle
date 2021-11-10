@@ -1,0 +1,21 @@
+[package]
+edition = "2021"
+name = "ast-demangle-fuzz"
+publish = false
+version = "0.0.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+ast-demangle = { path = ".." }
+libfuzzer-sys = "*"
+
+[workspace]
+members = ["."]
+
+[[bin]]
+doc = false
+name = "fuzz-target"
+path = "fuzz-targets/fuzz-target.rs"
+test = false
