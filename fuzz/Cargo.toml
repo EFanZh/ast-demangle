@@ -11,11 +11,8 @@ cargo-fuzz = true
 ast-demangle = { path = ".." }
 libfuzzer-sys = "*"
 
-[workspace]
-members = ["."]
-
 [[bin]]
 doc = false
 name = "fuzz-target"
-path = "fuzz-targets/fuzz-target.rs"
+path = "fuzz-targets/rust-v0-demangle.rs"
 test = false
