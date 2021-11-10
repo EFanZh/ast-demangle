@@ -15,11 +15,14 @@ use std::str;
 #[cfg(test)]
 mod tests;
 
+const MAX_DEPTH: usize = 128;
+
 #[derive(Default)]
 struct Context<'a> {
     paths: HashMap<usize, Rc<Path<'a>>>,
     types: HashMap<usize, Rc<Type<'a>>>,
     consts: HashMap<usize, Rc<Const<'a>>>,
+    depth: usize,
 }
 
 #[derive(Clone)]
@@ -86,6 +89,24 @@ where
     })
 }
 
+fn limit_recursion_depth<'a, I, T>(
+    mut parser: impl Parser<I, Context<'a>, Output = T>,
+) -> impl Parser<I, Context<'a>, Output = T> {
+    move |input, context: &mut Context<'a>| {
+        if context.depth < MAX_DEPTH {
+            context.depth += 1;
+
+            let result = parser.parse(input, context);
+
+            context.depth -= 1;
+
+            result
+        } else {
+            Err(())
+        }
+    }
+}
+
 // References:
 //
 // - <https://github.com/rust-lang/rustc-demangle/blob/main/src/v0.rs>.
@@ -113,33 +134,36 @@ fn parse_symbol_inner<'a>(
 fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Path<'a>>, IndexedStr<'a>), ()> {
     let index = input.index;
 
-    alt((
-        preceded(tag('C'), parse_identifier).map(Path::CrateRoot),
-        preceded(tag('M'), parse_impl_path.and(parse_type))
-            .map(|(impl_path, type_)| Path::InherentImpl { impl_path, type_ }),
-        preceded(tag('X'), tuple((parse_impl_path, parse_type, parse_path))).map(|(impl_path, type_, trait_)| {
-            Path::TraitImpl {
-                impl_path,
-                type_,
-                trait_,
-            }
+    limit_recursion_depth(
+        alt((
+            preceded(tag('C'), parse_identifier).map(Path::CrateRoot),
+            preceded(tag('M'), parse_impl_path.and(parse_type))
+                .map(|(impl_path, type_)| Path::InherentImpl { impl_path, type_ }),
+            preceded(tag('X'), tuple((parse_impl_path, parse_type, parse_path))).map(|(impl_path, type_, trait_)| {
+                Path::TraitImpl {
+                    impl_path,
+                    type_,
+                    trait_,
+                }
+            }),
+            preceded(tag('Y'), parse_type.and(parse_path))
+                .map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
+            preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map(|(namespace, path, name)| {
+                Path::Nested {
+                    namespace: namespace.as_bytes()[0],
+                    path,
+                    name,
+                }
+            }),
+            delimited(tag('I'), parse_path.and(parse_generic_arg.many0()), tag('E'))
+                .map(|(path, generic_args)| Path::Generic { path, generic_args }),
+        ))
+        .map(Rc::new)
+        .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.paths.get(&back_ref).cloned()))
+        .inspect_with_context(move |result, context| {
+            context.paths.insert(index, Rc::clone(result));
         }),
-        preceded(tag('Y'), parse_type.and(parse_path)).map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
-        preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map(|(namespace, path, name)| {
-            Path::Nested {
-                namespace: namespace.as_bytes()[0],
-                path,
-                name,
-            }
-        }),
-        delimited(tag('I'), parse_path.and(parse_generic_arg.many0()), tag('E'))
-            .map(|(path, generic_args)| Path::Generic { path, generic_args }),
-    ))
-    .map(Rc::new)
-    .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.paths.get(&back_ref).cloned()))
-    .inspect_with_context(|result, context| {
-        context.paths.insert(index, Rc::clone(result));
-    })
+    )
     .parse(input, context)
 }
 
@@ -168,27 +192,25 @@ fn parse_undisambiguated_identifier<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
 ) -> Result<(Cow<'a, str>, IndexedStr<'a>), ()> {
-    tuple((
-        tag('u').opt().map(|tag| tag.is_some()),
-        parse_decimal_number,
-        tag('_').opt(),
-    ))
-    .flat_map(|(is_punycode, length, _)| {
-        take(length).map_opt(move |name: &str| {
-            Some(if is_punycode {
-                let mut buffer = name.as_bytes().to_vec();
+    tuple((tag('u').opt(), parse_decimal_number, tag('_').opt()))
+        .flat_map(|(punycode, length, _)| {
+            let is_punycode = punycode.is_some();
 
-                if let Some(c) = buffer.iter_mut().rfind(|&&mut c| c == b'_') {
-                    *c = b'-';
-                }
+            take(length).map_opt(move |name: &str| {
+                Some(if is_punycode {
+                    let mut buffer = name.as_bytes().to_vec();
 
-                Cow::Owned(punycode::decode(str::from_utf8(&buffer).ok()?).ok()?)
-            } else {
-                Cow::Borrowed(name)
+                    if let Some(c) = buffer.iter_mut().rfind(|&&mut c| c == b'_') {
+                        *c = b'-';
+                    }
+
+                    Cow::Owned(punycode::decode(str::from_utf8(&buffer).ok()?).ok()?)
+                } else {
+                    Cow::Borrowed(name)
+                })
             })
         })
-    })
-    .parse(input, context)
+        .parse(input, context)
 }
 
 fn parse_generic_arg<'a>(
@@ -214,33 +236,35 @@ fn parse_binder<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<
 fn parse_type<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Type<'a>>, IndexedStr<'a>), ()> {
     let index = input.index;
 
-    alt((
-        parse_basic_type.map(Type::Basic),
-        parse_path.map(Type::Named),
-        preceded(tag('A'), parse_type.and(parse_const)).map(|(type_, length)| Type::Array(type_, length)),
-        preceded(tag('S'), parse_type).map(Type::Slice),
-        delimited(tag('T'), parse_type.many0(), tag('E')).map(Type::Tuple),
-        preceded(
-            tag('R'),
-            parse_lifetime.opt().map(Option::unwrap_or_default).and(parse_type),
-        )
-        .map(|(lifetime, type_)| Type::Ref { lifetime, type_ }),
-        preceded(
-            tag('Q'),
-            parse_lifetime.opt().map(Option::unwrap_or_default).and(parse_type),
-        )
-        .map(|(lifetime, type_)| Type::RefMut { lifetime, type_ }),
-        preceded(tag('P'), parse_type).map(Type::PtrConst),
-        preceded(tag('O'), parse_type).map(Type::PtrMut),
-        preceded(tag('F'), parse_fn_sig).map(Type::Fn),
-        preceded(tag('D'), parse_dyn_bounds.and(parse_lifetime))
-            .map(|(dyn_bounds, lifetime)| Type::DynTrait { dyn_bounds, lifetime }),
-    ))
-    .map(Rc::new)
-    .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.types.get(&back_ref).cloned()))
-    .inspect_with_context(|result, context| {
-        context.types.insert(index, Rc::clone(result));
-    })
+    limit_recursion_depth(
+        alt((
+            parse_basic_type.map(Type::Basic),
+            parse_path.map(Type::Named),
+            preceded(tag('A'), parse_type.and(parse_const)).map(|(type_, length)| Type::Array(type_, length)),
+            preceded(tag('S'), parse_type).map(Type::Slice),
+            delimited(tag('T'), parse_type.many0(), tag('E')).map(Type::Tuple),
+            preceded(
+                tag('R'),
+                parse_lifetime.opt().map(Option::unwrap_or_default).and(parse_type),
+            )
+            .map(|(lifetime, type_)| Type::Ref { lifetime, type_ }),
+            preceded(
+                tag('Q'),
+                parse_lifetime.opt().map(Option::unwrap_or_default).and(parse_type),
+            )
+            .map(|(lifetime, type_)| Type::RefMut { lifetime, type_ }),
+            preceded(tag('P'), parse_type).map(Type::PtrConst),
+            preceded(tag('O'), parse_type).map(Type::PtrMut),
+            preceded(tag('F'), parse_fn_sig).map(Type::Fn),
+            preceded(tag('D'), parse_dyn_bounds.and(parse_lifetime))
+                .map(|(dyn_bounds, lifetime)| Type::DynTrait { dyn_bounds, lifetime }),
+        ))
+        .map(Rc::new)
+        .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.types.get(&back_ref).cloned()))
+        .inspect_with_context(move |result, context| {
+            context.types.insert(index, Rc::clone(result));
+        }),
+    )
     .parse(input, context)
 }
 
@@ -276,26 +300,29 @@ fn parse_basic_type<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Res
 fn parse_fn_sig<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(FnSig<'a>, IndexedStr<'a>), ()> {
     tuple((
         opt_u64(parse_binder),
-        tag('U').opt().map(|u| u.is_some()),
+        tag('U').opt(),
         preceded(tag('K'), parse_abi).opt(),
         terminated(parse_type.many0(), tag('E')),
         parse_type,
     ))
-    .map(|(bound_lifetimes, is_unsafe, abi, argument_types, return_type)| FnSig {
-        bound_lifetimes,
-        is_unsafe,
-        abi,
-        argument_types,
-        return_type,
-    })
+    .map(
+        |(bound_lifetimes, unsafe_tag, abi, argument_types, return_type)| FnSig {
+            bound_lifetimes,
+            is_unsafe: unsafe_tag.is_some(),
+            abi,
+            argument_types,
+            return_type,
+        },
+    )
     .parse(input, context)
 }
 
 fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Abi<'a>, IndexedStr<'a>), ()> {
-    tag('C')
-        .map(|_| Abi::C)
-        .or(parse_undisambiguated_identifier.map(Abi::Named))
-        .parse(input, context)
+    alt((
+        tag('C').map(|_| Abi::C),
+        parse_undisambiguated_identifier.map(Abi::Named),
+    ))
+    .parse(input, context)
 }
 
 fn parse_dyn_bounds<'a>(
@@ -333,45 +360,41 @@ fn parse_dyn_trait_assoc_binding<'a>(
 fn parse_const<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Const<'a>>, IndexedStr<'a>), ()> {
     let index = input.index;
 
-    alt((
-        preceded(tag('a'), parse_const_int.map(Const::I8)),
-        preceded(tag('h'), parse_const_int.map(Const::U8)),
-        preceded(tag('i'), parse_const_int.map(Const::Isize)),
-        preceded(tag('j'), parse_const_int.map(Const::Usize)),
-        preceded(tag('l'), parse_const_int.map(Const::I32)),
-        preceded(tag('m'), parse_const_int.map(Const::U32)),
-        preceded(tag('n'), parse_const_int.map(Const::I128)),
-        preceded(tag('o'), parse_const_int.map(Const::U128)),
-        preceded(tag('s'), parse_const_int.map(Const::I16)),
-        preceded(tag('t'), parse_const_int.map(Const::U16)),
-        preceded(tag('x'), parse_const_int.map(Const::I64)),
-        preceded(tag('y'), parse_const_int.map(Const::U64)),
-        preceded(
-            tag('b'),
-            parse_const_int::<u8>.map_opt(|result| match result {
+    limit_recursion_depth(
+        alt((
+            preceded(tag('a'), parse_const_int).map(Const::I8),
+            preceded(tag('h'), parse_const_int).map(Const::U8),
+            preceded(tag('i'), parse_const_int).map(Const::Isize),
+            preceded(tag('j'), parse_const_int).map(Const::Usize),
+            preceded(tag('l'), parse_const_int).map(Const::I32),
+            preceded(tag('m'), parse_const_int).map(Const::U32),
+            preceded(tag('n'), parse_const_int).map(Const::I128),
+            preceded(tag('o'), parse_const_int).map(Const::U128),
+            preceded(tag('s'), parse_const_int).map(Const::I16),
+            preceded(tag('t'), parse_const_int).map(Const::U16),
+            preceded(tag('x'), parse_const_int).map(Const::I64),
+            preceded(tag('y'), parse_const_int).map(Const::U64),
+            preceded(tag('b'), parse_const_int::<u8>).map_opt(|result| match result {
                 0 => Some(Const::Bool(false)),
                 1 => Some(Const::Bool(true)),
                 _ => None,
             }),
-        ),
-        preceded(
-            tag('c'),
-            parse_const_int::<u32>.map_opt(|result| result.try_into().ok().map(Const::Char)),
-        ),
-        preceded(tag('e'), parse_const_str.map(Const::Str)),
-        preceded(tag('R'), parse_const.map(Const::Ref)),
-        preceded(tag('Q'), parse_const.map(Const::RefMut)),
-        delimited(tag('A'), parse_const.many0(), tag('E')).map(Const::Array),
-        delimited(tag('T'), parse_const.many0(), tag('E')).map(Const::Tuple),
-        preceded(tag('V'), parse_path.and(parse_const_fields))
-            .map(|(path, fields)| Const::NamedStruct { path, fields }),
-        tag('p').map(|_| Const::Placeholder),
-    ))
-    .map(Rc::new)
-    .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.consts.get(&back_ref).cloned()))
-    .inspect_with_context(|result, context| {
-        context.consts.insert(index, Rc::clone(result));
-    })
+            preceded(tag('c'), parse_const_int::<u32>).map_opt(|result| result.try_into().ok().map(Const::Char)),
+            preceded(tag('e'), parse_const_str).map(Const::Str),
+            preceded(tag('R'), parse_const).map(Const::Ref),
+            preceded(tag('Q'), parse_const).map(Const::RefMut),
+            delimited(tag('A'), parse_const.many0(), tag('E')).map(Const::Array),
+            delimited(tag('T'), parse_const.many0(), tag('E')).map(Const::Tuple),
+            preceded(tag('V'), parse_path.and(parse_const_fields))
+                .map(|(path, fields)| Const::NamedStruct { path, fields }),
+            tag('p').map(|_| Const::Placeholder),
+        ))
+        .map(Rc::new)
+        .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.consts.get(&back_ref).cloned()))
+        .inspect_with_context(move |result, context| {
+            context.consts.insert(index, Rc::clone(result));
+        }),
+    )
     .parse(input, context)
 }
 
