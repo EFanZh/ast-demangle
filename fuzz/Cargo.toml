@@ -13,6 +13,6 @@ libfuzzer-sys = "*"
 
 [[bin]]
 doc = false
-name = "fuzz-target"
+name = "rust-v0-demangle"
 path = "fuzz-targets/rust-v0-demangle.rs"
 test = false
