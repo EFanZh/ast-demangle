@@ -3,14 +3,15 @@ use crate::rust_v0::display::{self, Style};
 use crate::rust_v0::parsers::{Context, IndexedStr};
 use crate::rust_v0::{
     Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg, Identifier, ImplPath, Path, Symbol,
-    Type,
+    Type, UndisambiguatedIdentifier,
 };
+use std::borrow::Cow;
 use std::rc::Rc;
 
-fn id(name: &str) -> Identifier {
+fn id(disambiguator: u64, name: &str) -> Identifier {
     Identifier {
-        disambiguator: 0,
-        name: name.into(),
+        disambiguator,
+        name: UndisambiguatedIdentifier::String(Cow::Borrowed(name)),
     }
 }
 
@@ -31,12 +32,22 @@ fn test_parse_undisambiguated_identifier() {
 
     assert_eq!(parse(""), Err(()));
 
-    assert_eq!(parse("6_123foo"), Ok(("123foo".into(), "")));
-    assert_eq!(parse("3bar"), Ok(("bar".into(), "")));
+    assert_eq!(
+        parse("6_123foo"),
+        Ok((UndisambiguatedIdentifier::String(Cow::Borrowed("123foo")), ""))
+    );
+
+    assert_eq!(
+        parse("3bar"),
+        Ok((UndisambiguatedIdentifier::String(Cow::Borrowed("bar")), ""))
+    );
 
     assert_eq!(
         parse("u30____7hkackfecea1cbdathfdh9hlq6y"),
-        Ok(("საჭმელად_გემრიელი_სადილი".into(), ""))
+        Ok((
+            UndisambiguatedIdentifier::String(Cow::Borrowed("საჭმელად_გემრიელი_სადილი")),
+            ""
+        ))
     );
 }
 
@@ -47,7 +58,14 @@ fn test_parse_abi() {
     assert_eq!(parse(""), Err(()));
 
     assert_eq!(parse("CDEF"), Ok((Abi::C, "DEF")));
-    assert_eq!(parse("3abcdef"), Ok((Abi::Named("abc".into()), "def")));
+
+    assert_eq!(
+        parse("3abcdef"),
+        Ok((
+            Abi::Named(UndisambiguatedIdentifier::String(Cow::Borrowed("abc"))),
+            "def"
+        ))
+    );
 }
 
 #[track_caller]
@@ -197,14 +215,10 @@ fn test_rustc_demangle_crate_with_leading_digit() {
                 version: None,
                 path: Path::Nested {
                     namespace: b'v',
-                    path: Path::CrateRoot(Identifier {
-                        disambiguator: 0,
-                        name: "123foo".into(),
-                    })
-                    .into(),
+                    path: Path::CrateRoot(id(0, "123foo")).into(),
                     name: Identifier {
                         disambiguator: 0,
-                        name: "bar".into(),
+                        name: UndisambiguatedIdentifier::String(Cow::Borrowed("bar")),
                     }
                 }
                 .into(),
@@ -224,15 +238,8 @@ fn test_rustc_demangle_utf8_idents() {
                 version: None,
                 path: Path::Nested {
                     namespace: b'q',
-                    path: Path::CrateRoot(Identifier {
-                        disambiguator: 0x_317d_4810_89b8_c8fe,
-                        name: "utf8_idents".into()
-                    })
-                    .into(),
-                    name: Identifier {
-                        disambiguator: 0,
-                        name: "საჭმელად_გემრიელი_სადილი".into()
-                    }
+                    path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "utf8_idents")).into(),
+                    name: id(0, "საჭმელად_გემრიელი_სადილი")
                 }
                 .into(),
                 instantiating_crate: None
@@ -255,36 +262,17 @@ fn test_rustc_demangle_closure_1() {
                         namespace: b'C',
                         path: Path::Nested {
                             namespace: b'g',
-                            path: Path::CrateRoot(Identifier {
-                                disambiguator: 0x_4d64_68d6_c9fd_4bb3,
-                                name: "cc".into()
-                            })
-                            .into(),
-                            name: Identifier {
-                                disambiguator: 0,
-                                name: "spawn".into()
-                            }
+                            path: Path::CrateRoot(id(0x_4d64_68d6_c9fd_4bb3, "cc")).into(),
+                            name: id(0, "spawn")
                         }
                         .into(),
-                        name: Identifier {
-                            disambiguator: 0,
-                            name: "".into()
-                        }
+                        name: id(0, "")
                     }
                     .into(),
-                    name: Identifier {
-                        disambiguator: 0,
-                        name: "".into()
-                    }
+                    name: id(0, "")
                 }
                 .into(),
-                instantiating_crate: Some(
-                    Path::CrateRoot(Identifier {
-                        disambiguator: 0x_4d64_68d6_c9fd_4bb3,
-                        name: "cc".into()
-                    })
-                    .into()
-                )
+                instantiating_crate: Some(Path::CrateRoot(id(0x_4d64_68d6_c9fd_4bb3, "cc")).into())
             },
             "",
         ))
@@ -295,13 +283,13 @@ fn test_rustc_demangle_closure_1() {
 fn test_rustc_demangle_closure_2() {
     let crate_root = Rc::new(Path::CrateRoot(Identifier {
         disambiguator: 0x_8468_17f7_41e5_4dfd,
-        name: "core".into(),
+        name: UndisambiguatedIdentifier::String(Cow::Borrowed("core")),
     }));
 
     let core_slice = Rc::new(Path::Nested {
         namespace: b'g',
         path: Rc::clone(&crate_root),
-        name: id("slice"),
+        name: id(0, "slice"),
     });
 
     assert_eq!(
@@ -326,7 +314,7 @@ fn test_rustc_demangle_closure_2() {
                                         path: Path::Nested {
                                             namespace: b'y',
                                             path: Rc::clone(&core_slice),
-                                            name: id("Iter")
+                                            name: id(0, "Iter")
                                         }
                                         .into(),
                                         generic_args: vec![GenericArg::Type(Type::Basic(BasicType::U8).into())]
@@ -341,21 +329,18 @@ fn test_rustc_demangle_closure_2() {
                                         path: Path::Nested {
                                             namespace: b'o',
                                             path: Rc::clone(&crate_root),
-                                            name: id("iter")
+                                            name: id(0, "iter")
                                         }
                                         .into(),
-                                        name: id("iterator")
+                                        name: id(0, "iterator")
                                     }
                                     .into(),
-                                    name: Identifier {
-                                        disambiguator: 0,
-                                        name: "Iterator".into()
-                                    }
+                                    name: id(0, "Iterator")
                                 }
                                 .into()
                             }
                             .into(),
-                            name: id("rposition")
+                            name: id(0, "rposition")
                         }
                         .into(),
                         generic_args: vec![GenericArg::Type(
@@ -367,16 +352,13 @@ fn test_rustc_demangle_closure_2() {
                                         path: Path::Nested {
                                             namespace: b'p',
                                             path: Rc::clone(&core_slice),
-                                            name: id("memchr")
+                                            name: id(0, "memchr")
                                         }
                                         .into(),
-                                        name: id("memrchr")
+                                        name: id(0, "memrchr")
                                     }
                                     .into(),
-                                    name: Identifier {
-                                        disambiguator: 1,
-                                        name: "".into()
-                                    }
+                                    name: id(1, "")
                                 }
                                 .into()
                             )
@@ -384,10 +366,7 @@ fn test_rustc_demangle_closure_2() {
                         )]
                     }
                     .into(),
-                    name: Identifier {
-                        disambiguator: 0,
-                        name: "".into()
-                    }
+                    name: id(0, "")
                 }
                 .into(),
                 instantiating_crate: Some(crate_root)
@@ -409,21 +388,11 @@ fn test_rustc_demangle_dyn_trait() {
                         namespace: b'b',
                         path: Path::Nested {
                             namespace: b'b',
-                            path: Path::CrateRoot(Identifier {
-                                disambiguator: 0x_f15a_878b_47eb_696b,
-                                name: "alloc".into()
-                            })
-                            .into(),
-                            name: Identifier {
-                                disambiguator: 0,
-                                name: "alloc".into()
-                            }
+                            path: Path::CrateRoot(id(0x_f15a_878b_47eb_696b, "alloc")).into(),
+                            name: id(0, "alloc")
                         }
                         .into(),
-                        name: Identifier {
-                            disambiguator: 0,
-                            name: "box_free".into()
-                        }
+                        name: id(0, "box_free")
                     }
                     .into(),
                     generic_args: vec![GenericArg::Type(
@@ -436,28 +405,18 @@ fn test_rustc_demangle_dyn_trait() {
                                             namespace: b'b',
                                             path: Path::Nested {
                                                 namespace: b'i',
-                                                path: Path::CrateRoot(Identifier {
-                                                    disambiguator: 0x_f15a_878b_47eb_696b,
-                                                    name: "alloc".into()
-                                                })
-                                                .into(),
-                                                name: Identifier {
-                                                    disambiguator: 0,
-                                                    name: "boxed".into()
-                                                }
+                                                path: Path::CrateRoot(id(0x_f15a_878b_47eb_696b, "alloc")).into(),
+                                                name: id(0, "boxed")
                                             }
                                             .into(),
-                                            name: Identifier {
-                                                disambiguator: 0,
-                                                name: "FnBox".into()
-                                            }
+                                            name: id(0, "FnBox")
                                         }
                                         .into(),
                                         generic_args: vec![GenericArg::Type(Type::Basic(BasicType::Unit).into())]
                                     }
                                     .into(),
                                     dyn_trait_assoc_bindings: vec![DynTraitAssocBinding {
-                                        name: "Output".into(),
+                                        name: UndisambiguatedIdentifier::String(Cow::Borrowed("Output")),
                                         type_: Type::Basic(BasicType::Unit).into()
                                     }]
                                 }]
@@ -468,13 +427,7 @@ fn test_rustc_demangle_dyn_trait() {
                     )]
                 }
                 .into(),
-                instantiating_crate: Some(
-                    Path::CrateRoot(Identifier {
-                        disambiguator: 0x_0f1a_6958_f46c_38e4,
-                        name: "std".into()
-                    })
-                    .into()
-                )
+                instantiating_crate: Some(Path::CrateRoot(id(0x_0f1a_6958_f46c_38e4, "std")).into())
             },
             "",
         ))
@@ -491,15 +444,8 @@ fn test_rustc_demangle_const_generics_usize_123() {
                 path: Path::Generic {
                     path: Path::Nested {
                         namespace: b't',
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0,
-                            name: "arrayvec".into()
-                        })
-                        .into(),
-                        name: Identifier {
-                            disambiguator: 0,
-                            name: "ArrayVec".into()
-                        }
+                        path: Path::CrateRoot(id(0, "arrayvec")).into(),
+                        name: id(0, "ArrayVec")
                     }
                     .into(),
                     generic_args: vec![
@@ -525,25 +471,14 @@ fn test_rustc_demangle_const_generics_u8_11() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Unsigned".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Unsigned")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::U8(11).into())]
@@ -570,25 +505,14 @@ fn test_rustc_demangle_const_generics_i16_152() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Signed".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Signed")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::I16(152).into())]
@@ -615,25 +539,14 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Signed".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Signed")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::I8(-11).into())]
@@ -660,25 +573,14 @@ fn test_rustc_demangle_const_generics_bool_false() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Bool".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Bool")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::Bool(false).into())]
@@ -705,25 +607,14 @@ fn test_rustc_demangle_const_generics_bool_true() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Bool".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Bool")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::Bool(true).into())]
@@ -750,25 +641,14 @@ fn test_rustc_demangle_const_generics_char_v() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Char".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Char")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::Char('v').into())]
@@ -795,25 +675,14 @@ fn test_rustc_demangle_const_generics_char_lf() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Char".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Char")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::Char('\n').into())]
@@ -840,25 +709,14 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                            name: "const_generic".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "Char".into()
-                                }
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                name: id(0, "Char")
                             }
                             .into(),
                             generic_args: vec![GenericArg::Const(Const::Char('∂').into())]
@@ -889,25 +747,14 @@ fn test_rustc_demangle_const_generics_placeholder() {
                         path: Path::InherentImpl {
                             impl_path: ImplPath {
                                 disambiguator: 0,
-                                path: Path::CrateRoot(Identifier {
-                                    disambiguator: 0x_317d_4810_89b8_c8fe,
-                                    name: "const_generic".into()
-                                })
-                                .into()
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                             },
                             type_: Type::Named(
                                 Path::Generic {
                                     path: Path::Nested {
                                         namespace: b't',
-                                        path: Path::CrateRoot(Identifier {
-                                            disambiguator: 0x_317d_4810_89b8_c8fe,
-                                            name: "const_generic".into()
-                                        })
-                                        .into(),
-                                        name: Identifier {
-                                            disambiguator: 0,
-                                            name: "Foo".into()
-                                        }
+                                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
+                                        name: id(0, "Foo")
                                     }
                                     .into(),
                                     generic_args: vec![GenericArg::Const(Const::Placeholder.into())]
@@ -917,16 +764,10 @@ fn test_rustc_demangle_const_generics_placeholder() {
                             .into()
                         }
                         .into(),
-                        name: Identifier {
-                            disambiguator: 0,
-                            name: "foo".into()
-                        }
+                        name: id(0, "foo")
                     }
                     .into(),
-                    name: Identifier {
-                        disambiguator: 0,
-                        name: "FOO".into()
-                    }
+                    name: id(0, "FOO")
                 }
                 .into(),
                 instantiating_crate: None
@@ -954,11 +795,7 @@ fn test_rustc_demangle_exponential_explosion() {
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         disambiguator: 0,
-                        path: Path::CrateRoot(Identifier {
-                            disambiguator: 0,
-                            name: "".into()
-                        })
-                        .into()
+                        path: Path::CrateRoot(id(0, "")).into()
                     },
                     type_: tuple
                 }
@@ -977,11 +814,7 @@ fn test_rustc_demangle_thinlto() {
         Ok((
             Symbol {
                 version: None,
-                path: Path::CrateRoot(Identifier {
-                    disambiguator: 0,
-                    name: "foo".into()
-                })
-                .into(),
+                path: Path::CrateRoot(id(0, "foo")).into(),
                 instantiating_crate: None
             },
             ".llvm.9D1C9369",
@@ -993,11 +826,7 @@ fn test_rustc_demangle_thinlto() {
         Ok((
             Symbol {
                 version: None,
-                path: Path::CrateRoot(Identifier {
-                    disambiguator: 0,
-                    name: "foo".into()
-                })
-                .into(),
+                path: Path::CrateRoot(id(0, "foo")).into(),
                 instantiating_crate: None
             },
             ".llvm.9D1C9369@@16",
@@ -1011,15 +840,8 @@ fn test_rustc_demangle_thinlto() {
                 version: None,
                 path: Path::Nested {
                     namespace: b'v',
-                    path: Path::CrateRoot(Identifier {
-                        disambiguator: 0,
-                        name: "backtrace".into()
-                    })
-                    .into(),
-                    name: Identifier {
-                        disambiguator: 0,
-                        name: "foo".into()
-                    }
+                    path: Path::CrateRoot(id(0, "backtrace")).into(),
+                    name: id(0, "foo")
                 }
                 .into(),
                 instantiating_crate: None
@@ -1046,39 +868,20 @@ fn test_rustc_demangle_extra_suffix() {
                                 namespace: 116,
                                 path: Path::Nested {
                                     namespace: 116,
-                                    path: Path::CrateRoot(Identifier {
-                                        disambiguator: 0x_693e_a8e7_2247_470f,
-                                        name: "rand".into()
-                                    })
-                                    .into(),
-                                    name: Identifier {
-                                        disambiguator: 0,
-                                        name: "rngs".into()
-                                    }
+                                    path: Path::CrateRoot(id(0x_693e_a8e7_2247_470f, "rand")).into(),
+                                    name: id(0, "rngs")
                                 }
                                 .into(),
-                                name: Identifier {
-                                    disambiguator: 0,
-                                    name: "adapter".into()
-                                }
+                                name: id(0, "adapter")
                             }
                             .into(),
-                            name: Identifier {
-                                disambiguator: 0,
-                                name: "reseeding".into()
-                            }
+                            name: id(0, "reseeding")
                         }
                         .into(),
-                        name: Identifier {
-                            disambiguator: 0,
-                            name: "fork".into()
-                        }
+                        name: id(0, "fork")
                     }
                     .into(),
-                    name: Identifier {
-                        disambiguator: 0,
-                        name: "FORK_HANDLER_REGISTERED".into()
-                    }
+                    name: id(0, "FORK_HANDLER_REGISTERED")
                 }
                 .into(),
                 instantiating_crate: None

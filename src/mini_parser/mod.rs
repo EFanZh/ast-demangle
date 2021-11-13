@@ -1,6 +1,5 @@
-use crate::mini_parser::combinators::{InspectWithContext, Many0, MapOptWithContext};
-
 use self::combinators::{And, FlatMap, Map, MapOpt, Opt, Or};
+use crate::mini_parser::combinators::{InspectWithContext, Many0, MapOptWithContext};
 
 pub mod combinators;
 pub mod generic_tuple;

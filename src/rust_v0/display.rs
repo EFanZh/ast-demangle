@@ -2,6 +2,7 @@
 
 use crate::rust_v0::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type,
+    UndisambiguatedIdentifier,
 };
 use std::any;
 use std::cell::Cell;
@@ -53,9 +54,14 @@ fn display_separated_list(values: impl IntoIterator<Item = impl Display>, separa
 pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
     display_fn(move |f| match path {
         Path::CrateRoot(name) => match style {
-            Style::Short | Style::Normal => f.write_str(&name.name),
+            Style::Short | Style::Normal => write!(f, "{}", display_undisambiguated_identifier(&name.name)),
             Style::Long => {
-                write!(f, "{}[{:x}]", &name.name, name.disambiguator)
+                write!(
+                    f,
+                    "{}[{:x}]",
+                    &display_undisambiguated_identifier(&name.name),
+                    name.disambiguator
+                )
             }
         },
         Path::InherentImpl { type_, .. } => {
@@ -82,7 +88,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                 }
 
                 if !name.name.is_empty() {
-                    write!(f, ":{}", name.name)?;
+                    write!(f, ":{}", display_undisambiguated_identifier(&name.name))?;
                 }
 
                 write!(f, "#{}}}", name.disambiguator)
@@ -102,10 +108,10 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                     if name.name.is_empty() {
                         Ok(())
                     } else {
-                        write!(f, "::{}", name.name)
+                        write!(f, "::{}", display_undisambiguated_identifier(&name.name))
                     }
                 } else {
-                    name.name.fmt(f)
+                    write!(f, "{}", display_undisambiguated_identifier(&name.name))
                 }
             }
             _ => Err(fmt::Error),
@@ -133,6 +139,30 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
     })
 }
 
+pub fn display_undisambiguated_identifier<'a>(
+    undisambiguated_identifier: &'a UndisambiguatedIdentifier,
+) -> impl Display + 'a {
+    display_fn(move |f| match undisambiguated_identifier {
+        UndisambiguatedIdentifier::String(name) => f.write_str(name),
+        UndisambiguatedIdentifier::PunyCode(name) => {
+            f.write_str("punycode{")?;
+
+            if let Some(i) = name.rfind('_') {
+                if i != 0 {
+                    f.write_str(&name[..i])?;
+                    f.write_char('-')?;
+                }
+
+                f.write_str(&name[i + 1..])?;
+            } else {
+                f.write_str(name)?;
+            }
+
+            f.write_char('}')
+        }
+    })
+}
+
 fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
     display_fn(move |f| {
         f.write_char('\'')?;
@@ -146,7 +176,7 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
                 write!(f, "_{}", depth)
             }
         } else {
-            Err(fmt::Error)
+            f.write_str("{invalid syntax}")
         }
     })
 }
@@ -322,15 +352,18 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
 
         match abi {
             Abi::C => f.write_char('C')?,
-            Abi::Named(name) => {
-                let mut iter = name.split('_');
+            Abi::Named(name) => match name {
+                UndisambiguatedIdentifier::String(name) => {
+                    let mut iter = name.split('_');
 
-                f.write_str(iter.next().unwrap())?;
+                    f.write_str(iter.next().unwrap())?;
 
-                for item in iter {
-                    write!(f, "-{}", item)?;
+                    for item in iter {
+                        write!(f, "-{}", item)?;
+                    }
                 }
-            }
+                UndisambiguatedIdentifier::PunyCode(_) => return Err(fmt::Error),
+            },
         }
 
         f.write_char('"')
@@ -418,7 +451,7 @@ fn display_dyn_trait_assoc_binding<'a>(
         write!(
             f,
             "{} = {}",
-            dyn_trait_assoc_binding.name,
+            display_undisambiguated_identifier(&dyn_trait_assoc_binding.name),
             display_type(&dyn_trait_assoc_binding.type_, style, bound_lifetime_depth)
         )
     })
@@ -541,7 +574,8 @@ fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetim
         ),
         ConstFields::Struct(fields) => {
             if fields.is_empty() {
-                write!(f, " {{}}")
+                // Matches the behavior of `rustc-demangle`.
+                write!(f, " {{  }}")
             } else {
                 write!(
                     f,

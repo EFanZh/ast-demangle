@@ -4,7 +4,7 @@ use crate::mini_parser::parsers::{alphanumeric0, digit1, lower_hex_digit0, tag, 
 use crate::mini_parser::Parser;
 use crate::rust_v0::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier,
-    ImplPath, Path, Symbol, Type,
+    ImplPath, Path, Symbol, Type, UndisambiguatedIdentifier,
 };
 use num_traits::{CheckedNeg, PrimInt};
 use std::borrow::Cow;
@@ -191,23 +191,39 @@ fn parse_disambiguator<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> 
 fn parse_undisambiguated_identifier<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
-) -> Result<(Cow<'a, str>, IndexedStr<'a>), ()> {
+) -> Result<(UndisambiguatedIdentifier<'a>, IndexedStr<'a>), ()> {
     tuple((tag('u').opt(), parse_decimal_number, tag('_').opt()))
         .flat_map(|(punycode, length, _)| {
             let is_punycode = punycode.is_some();
 
             take(length).map_opt(move |name: &str| {
-                Some(if is_punycode {
-                    let mut buffer = name.as_bytes().to_vec();
+                if is_punycode {
+                    let i = name.bytes().rposition(|c| c == b'_').map_or(0, |i| i + 1);
+                    let right = &name[i..];
 
-                    if let Some(c) = buffer.iter_mut().rfind(|&&mut c| c == b'_') {
-                        *c = b'-';
-                    }
+                    (!right.is_empty()).then(|| {
+                        if right.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'z')) {
+                            let mut bytes = Vec::with_capacity(name.len());
 
-                    Cow::Owned(punycode::decode(str::from_utf8(&buffer).ok()?).ok()?)
+                            if i != 0 {
+                                bytes.extend(&name.as_bytes()[..i - 1]);
+                                bytes.push(b'-');
+                            }
+
+                            bytes.extend(right.as_bytes());
+
+                            if let Ok(decoded) = punycode::decode(str::from_utf8(&bytes).unwrap()) {
+                                UndisambiguatedIdentifier::String(Cow::Owned(decoded))
+                            } else {
+                                UndisambiguatedIdentifier::PunyCode(name)
+                            }
+                        } else {
+                            UndisambiguatedIdentifier::PunyCode(name)
+                        }
+                    })
                 } else {
-                    Cow::Borrowed(name)
-                })
+                    Some(UndisambiguatedIdentifier::String(Cow::Borrowed(name)))
+                }
             })
         })
         .parse(input, context)
@@ -320,7 +336,7 @@ fn parse_fn_sig<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<
 fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Abi<'a>, IndexedStr<'a>), ()> {
     alt((
         tag('C').map(|_| Abi::C),
-        parse_undisambiguated_identifier.map(Abi::Named),
+        parse_undisambiguated_identifier.map_opt(|id| (!id.is_empty()).then(|| Abi::Named(id))),
     ))
     .parse(input, context)
 }
@@ -436,7 +452,7 @@ fn parse_const_str<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Resu
     fn decode_hex_digit(digit: u8) -> Option<u8> {
         match digit {
             b'0'..=b'9' => Some(digit - b'0'),
-            b'a'..=b'z' => Some(digit - (b'a' - 10)),
+            b'a'..=b'f' => Some(digit - (b'a' - 10)),
             _ => None,
         }
     }

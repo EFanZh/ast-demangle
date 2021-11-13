@@ -44,7 +44,10 @@ fn test_against_rustc_demangle() {
             let ast_demangle_result = demangle_ast_demangle(line, &mut ast_demangle_buffer);
             let rustc_demangle_result = demangle_rustc_demangle(line, &mut rustc_demangle_buffer);
 
-            assert_eq!(ast_demangle_result, rustc_demangle_result);
+            assert_eq!(ast_demangle_result, rustc_demangle_result, "Failed: {}", line);
+
+            ast_demangle_buffer.clear();
+            rustc_demangle_buffer.clear();
         }
     }
 }

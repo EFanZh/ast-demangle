@@ -11,7 +11,8 @@ Parses mangled names and produces structured results.
 Example:
 
 ```rust
-use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol};
+use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol, UndisambiguatedIdentifier};
+use std::borrow::Cow;
 
 let mangled_name = "_RNvNtCs6GSVXm7oiwY_5regex4utf811decode_utf8.llvm.1119170478327948870";
 let (symbol, suffix) = Symbol::parse_from_str(mangled_name).unwrap();
@@ -47,18 +48,18 @@ assert_eq!(
                 namespace: b't',
                 path: Path::CrateRoot(Identifier {
                     disambiguator: 0x4df1_4705_8689_a776,
-                    name: "regex".into()
+                    name: UndisambiguatedIdentifier::String(Cow::Borrowed("regex"))
                 })
                 .into(),
                 name: Identifier {
                     disambiguator: 0,
-                    name: "utf8".into()
+                    name: UndisambiguatedIdentifier::String(Cow::Borrowed("utf8"))
                 }
             }
             .into(),
             name: Identifier {
                 disambiguator: 0,
-                name: "decode_utf8".into()
+                name: UndisambiguatedIdentifier::String(Cow::Borrowed("decode_utf8"))
             }
         }
         .into(),

@@ -111,20 +111,35 @@ pub struct ImplPath<'a> {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Identifier<'a> {
     pub disambiguator: u64,
-    pub name: Cow<'a, str>,
+    pub name: UndisambiguatedIdentifier<'a>,
 }
 
 impl Identifier<'_> {
     /// Returns an object that implements [`Display`] for printing the identifier.
     #[must_use]
     pub fn display(&self) -> impl Display + '_ {
-        self.name.as_ref()
+        display::display_undisambiguated_identifier(&self.name)
     }
 }
 
 impl Display for Identifier<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display().fmt(f)
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum UndisambiguatedIdentifier<'a> {
+    String(Cow<'a, str>),
+    PunyCode(&'a str),
+}
+
+impl UndisambiguatedIdentifier<'_> {
+    fn is_empty(&self) -> bool {
+        match self {
+            UndisambiguatedIdentifier::String(name) => name.is_empty(),
+            UndisambiguatedIdentifier::PunyCode(name) => name.is_empty() || *name == "_",
+        }
     }
 }
 
@@ -258,7 +273,7 @@ impl Display for FnSig<'_> {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Abi<'a> {
     C,
-    Named(Cow<'a, str>),
+    Named(UndisambiguatedIdentifier<'a>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -275,7 +290,7 @@ pub struct DynTrait<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynTraitAssocBinding<'a> {
-    pub name: Cow<'a, str>,
+    pub name: UndisambiguatedIdentifier<'a>,
     pub type_: Rc<Type<'a>>,
 }
 
