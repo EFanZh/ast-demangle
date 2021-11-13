@@ -176,7 +176,7 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
                 write!(f, "_{}", depth)
             }
         } else {
-            f.write_str("{invalid syntax}")
+            Err(fmt::Error)
         }
     })
 }

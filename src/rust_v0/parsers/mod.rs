@@ -148,13 +148,15 @@ fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(R
             }),
             preceded(tag('Y'), parse_type.and(parse_path))
                 .map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
-            preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map(|(namespace, path, name)| {
-                Path::Nested {
-                    namespace: namespace.as_bytes()[0],
-                    path,
-                    name,
-                }
-            }),
+            preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map_opt(
+                |(namespace, path, name)| {
+                    matches!(namespace.as_bytes()[0], b'A'..=b'Z' | b'a'..=b'z').then(|| Path::Nested {
+                        namespace: namespace.as_bytes()[0],
+                        path,
+                        name,
+                    })
+                },
+            ),
             delimited(tag('I'), parse_path.and(parse_generic_arg.many0()), tag('E'))
                 .map(|(path, generic_args)| Path::Generic { path, generic_args }),
         ))
@@ -334,9 +336,16 @@ fn parse_fn_sig<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<
 }
 
 fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Abi<'a>, IndexedStr<'a>), ()> {
+    fn is_abi_name(name: &str) -> bool {
+        !name.is_empty() && name.is_ascii()
+    }
+
     alt((
         tag('C').map(|_| Abi::C),
-        parse_undisambiguated_identifier.map_opt(|id| (!id.is_empty()).then(|| Abi::Named(id))),
+        parse_undisambiguated_identifier.map_opt(|id| match id {
+            UndisambiguatedIdentifier::String(ref name) => is_abi_name(name).then(|| Abi::Named(id)),
+            UndisambiguatedIdentifier::PunyCode(_) => None,
+        }),
     ))
     .parse(input, context)
 }
@@ -435,12 +444,16 @@ where
             .opt()
             .and(lower_hex_digit0)
             .map_opt(|(is_negative, data): (_, &str)| {
-                let base = T::from_str_radix(data, 16).ok();
-
-                if is_negative.is_none() {
-                    base
+                if data.is_empty() {
+                    Some(T::zero())
                 } else {
-                    base.and_then(|value| value.checked_neg())
+                    let base = T::from_str_radix(data, 16).ok();
+
+                    if is_negative.is_none() {
+                        base
+                    } else {
+                        base.and_then(|value| value.checked_neg())
+                    }
                 }
             }),
         tag('_'),
