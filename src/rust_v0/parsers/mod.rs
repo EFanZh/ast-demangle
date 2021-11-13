@@ -15,7 +15,7 @@ use std::str;
 #[cfg(test)]
 mod tests;
 
-const MAX_DEPTH: usize = 128;
+const MAX_DEPTH: usize = 100;
 
 #[derive(Default)]
 struct Context<'a> {
