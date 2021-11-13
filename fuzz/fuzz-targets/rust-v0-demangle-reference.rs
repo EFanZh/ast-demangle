@@ -1,6 +1,5 @@
 #![no_main]
 
-use ast_demangle::rust_v0::Symbol;
 use std::io::{self, Write};
 
 fn fuzz_with(data: &str) {
@@ -10,7 +9,7 @@ fn fuzz_with(data: &str) {
     {
         let mut sink = io::sink();
 
-        if let Ok((symbol, _)) = Symbol::parse_from_str(data) {
+        if let Ok(symbol) = rustc_demangle::try_demangle(data) {
             let _ = write!(sink, "{}", symbol);
             let _ = write!(sink, "{:#}", symbol);
         }

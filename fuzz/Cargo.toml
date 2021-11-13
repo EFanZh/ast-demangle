@@ -10,9 +10,16 @@ cargo-fuzz = true
 [dependencies]
 ast-demangle = { path = ".." }
 libfuzzer-sys = "*"
+rustc-demangle = "0.1"
 
 [[bin]]
 doc = false
 name = "rust-v0-demangle"
 path = "fuzz-targets/rust-v0-demangle.rs"
+test = false
+
+[[bin]]
+doc = false
+name = "rust-v0-demangle-reference"
+path = "fuzz-targets/rust-v0-demangle-reference.rs"
 test = false
