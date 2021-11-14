@@ -15,6 +15,7 @@ punycode = "0.4"
 
 [dev-dependencies]
 rustc-demangle = "0.1"
+test-utilities = { path = "test-utilities" }
 
 [workspace]
-members = ["fuzz"]
+members = ["fuzz", "test-utilities"]

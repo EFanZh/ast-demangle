@@ -1,25 +1,16 @@
 use ast_demangle::rust_v0::Symbol;
-use std::fmt::{self, Write};
+use std::fmt::Write;
+use test_utilities::BoundedWriter;
 
 const TEST_DATA: &str = include_str!("test-against-rustc-demangle-data.txt");
 
-struct StopIfFull<'a>(&'a mut String);
-
-impl Write for StopIfFull<'_> {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        if self.0.len() < 65536 {
-            self.0.push_str(s);
-
-            Ok(())
-        } else {
-            Err(fmt::Error)
-        }
-    }
+fn bounded_writer(buffer: &mut String) -> BoundedWriter<&mut String> {
+    BoundedWriter::new(buffer, 65536)
 }
 
 #[allow(clippy::if_then_some_else_none)] // See <https://github.com/rust-lang/rust-clippy/issues/7870>.
 fn demangle_ast_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a str, &'a str)> {
-    let mut buffer = StopIfFull(buffer);
+    let mut buffer = bounded_writer(buffer);
     let (symbol, rest) = Symbol::parse_from_str(name).ok()?;
 
     if rest.is_empty() || rest.starts_with('.') {
@@ -27,11 +18,11 @@ fn demangle_ast_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a 
 
         write!(buffer, "{}{}", symbol, suffix).ok()?;
 
-        let split = buffer.0.len();
+        let split = buffer.inner().len();
 
         write!(buffer, "{:#}{}", symbol, suffix).ok()?;
 
-        Some(buffer.0.split_at(split))
+        Some(buffer.into_inner().split_at(split))
     } else {
         None
     }
@@ -50,24 +41,24 @@ fn demangle_rustc_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'
         .any(|pattern| buffer.contains(pattern))
     }
 
-    let mut buffer = StopIfFull(buffer);
+    let mut buffer = bounded_writer(buffer);
     let demangle = rustc_demangle::try_demangle(name).ok()?;
 
     write!(buffer, "{}", demangle).ok()?;
 
-    if has_error(buffer.0) {
+    if has_error(buffer.inner()) {
         return None;
     }
 
-    let split = buffer.0.len();
+    let split = buffer.inner().len();
 
     write!(buffer, "{:#}", demangle).ok()?;
 
-    if has_error(buffer.0) {
+    if has_error(buffer.inner()) {
         return None;
     }
 
-    Some(buffer.0.split_at(split))
+    Some(buffer.into_inner().split_at(split))
 }
 
 #[test]

@@ -11,6 +11,7 @@ cargo-fuzz = true
 ast-demangle = { path = ".." }
 libfuzzer-sys = "*"
 rustc-demangle = "0.1"
+test-utilities = { path = "../test-utilities" }
 
 [[bin]]
 doc = false
