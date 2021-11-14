@@ -18,9 +18,3 @@ doc = false
 name = "rust-v0-demangle"
 path = "fuzz-targets/rust-v0-demangle.rs"
 test = false
-
-[[bin]]
-doc = false
-name = "rust-v0-demangle-reference"
-path = "fuzz-targets/rust-v0-demangle-reference.rs"
-test = false
