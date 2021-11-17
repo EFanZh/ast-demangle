@@ -144,7 +144,7 @@ pub fn display_undisambiguated_identifier<'a>(
 ) -> impl Display + 'a {
     display_fn(move |f| match undisambiguated_identifier {
         UndisambiguatedIdentifier::String(name) => f.write_str(name),
-        UndisambiguatedIdentifier::PunyCode(name) => {
+        UndisambiguatedIdentifier::Punycode(name) => {
             f.write_str("punycode{")?;
 
             if let Some(i) = name.rfind('_') {
@@ -362,7 +362,7 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
                         write!(f, "-{}", item)?;
                     }
                 }
-                UndisambiguatedIdentifier::PunyCode(_) => return Err(fmt::Error),
+                UndisambiguatedIdentifier::Punycode(_) => return Err(fmt::Error),
             },
         }
 

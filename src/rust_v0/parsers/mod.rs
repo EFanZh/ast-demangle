@@ -217,10 +217,10 @@ fn parse_undisambiguated_identifier<'a>(
                             if let Ok(decoded) = punycode::decode(str::from_utf8(&bytes).unwrap()) {
                                 UndisambiguatedIdentifier::String(Cow::Owned(decoded))
                             } else {
-                                UndisambiguatedIdentifier::PunyCode(name)
+                                UndisambiguatedIdentifier::Punycode(name)
                             }
                         } else {
-                            UndisambiguatedIdentifier::PunyCode(name)
+                            UndisambiguatedIdentifier::Punycode(name)
                         }
                     })
                 } else {
@@ -344,7 +344,7 @@ fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Ab
         tag('C').map(|_| Abi::C),
         parse_undisambiguated_identifier.map_opt(|id| match id {
             UndisambiguatedIdentifier::String(ref name) => is_abi_name(name).then(|| Abi::Named(id)),
-            UndisambiguatedIdentifier::PunyCode(_) => None,
+            UndisambiguatedIdentifier::Punycode(_) => None,
         }),
     ))
     .parse(input, context)
