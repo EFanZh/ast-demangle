@@ -87,7 +87,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                     _ => f.write_char(char::from(*namespace))?,
                 }
 
-                if !name.name.is_empty() {
+                if !name.name.0.is_empty() {
                     write!(f, ":{}", display_undisambiguated_identifier(&name.name))?;
                 }
 
@@ -105,7 +105,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                 {
                     display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
 
-                    if name.name.is_empty() {
+                    if name.name.0.is_empty() {
                         Ok(())
                     } else {
                         write!(f, "::{}", display_undisambiguated_identifier(&name.name))
@@ -142,25 +142,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
 pub fn display_undisambiguated_identifier<'a>(
     undisambiguated_identifier: &'a UndisambiguatedIdentifier,
 ) -> impl Display + 'a {
-    display_fn(move |f| match undisambiguated_identifier {
-        UndisambiguatedIdentifier::String(name) => f.write_str(name),
-        UndisambiguatedIdentifier::Punycode(name) => {
-            f.write_str("punycode{")?;
-
-            if let Some(i) = name.rfind('_') {
-                if i != 0 {
-                    f.write_str(&name[..i])?;
-                    f.write_char('-')?;
-                }
-
-                f.write_str(&name[i + 1..])?;
-            } else {
-                f.write_str(name)?;
-            }
-
-            f.write_char('}')
-        }
-    })
+    display_fn(move |f| f.write_str(&undisambiguated_identifier.0))
 }
 
 fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
@@ -352,18 +334,16 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
 
         match abi {
             Abi::C => f.write_char('C')?,
-            Abi::Named(name) => match name {
-                UndisambiguatedIdentifier::String(name) => {
-                    let mut iter = name.split('_');
+            Abi::Named(name) => {
+                let name = name.0.as_ref();
+                let mut iter = name.split('_');
 
-                    f.write_str(iter.next().unwrap())?;
+                f.write_str(iter.next().unwrap())?;
 
-                    for item in iter {
-                        write!(f, "-{}", item)?;
-                    }
+                for item in iter {
+                    write!(f, "-{}", item)?;
                 }
-                UndisambiguatedIdentifier::Punycode(_) => return Err(fmt::Error),
-            },
+            }
         }
 
         f.write_char('"')

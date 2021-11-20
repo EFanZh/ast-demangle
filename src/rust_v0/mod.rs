@@ -129,19 +129,7 @@ impl Display for Identifier<'_> {
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum UndisambiguatedIdentifier<'a> {
-    String(Cow<'a, str>),
-    Punycode(&'a str),
-}
-
-impl UndisambiguatedIdentifier<'_> {
-    fn is_empty(&self) -> bool {
-        match self {
-            UndisambiguatedIdentifier::String(name) => name.is_empty(),
-            UndisambiguatedIdentifier::Punycode(name) => name.is_empty() || *name == "_",
-        }
-    }
-}
+pub struct UndisambiguatedIdentifier<'a>(pub Cow<'a, str>);
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum GenericArg<'a> {

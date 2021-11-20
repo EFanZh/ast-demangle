@@ -11,7 +11,7 @@ use std::rc::Rc;
 fn id(disambiguator: u64, name: &str) -> Identifier {
     Identifier {
         disambiguator,
-        name: UndisambiguatedIdentifier::String(Cow::Borrowed(name)),
+        name: UndisambiguatedIdentifier(Cow::Borrowed(name)),
     }
 }
 
@@ -34,20 +34,14 @@ fn test_parse_undisambiguated_identifier() {
 
     assert_eq!(
         parse("6_123foo"),
-        Ok((UndisambiguatedIdentifier::String(Cow::Borrowed("123foo")), ""))
+        Ok((UndisambiguatedIdentifier(Cow::Borrowed("123foo")), ""))
     );
 
-    assert_eq!(
-        parse("3bar"),
-        Ok((UndisambiguatedIdentifier::String(Cow::Borrowed("bar")), ""))
-    );
+    assert_eq!(parse("3bar"), Ok((UndisambiguatedIdentifier(Cow::Borrowed("bar")), "")));
 
     assert_eq!(
         parse("u30____7hkackfecea1cbdathfdh9hlq6y"),
-        Ok((
-            UndisambiguatedIdentifier::String(Cow::Borrowed("საჭმელად_გემრიელი_სადილი")),
-            ""
-        ))
+        Ok((UndisambiguatedIdentifier(Cow::Borrowed("საჭმელად_გემრიელი_სადილი")), ""))
     );
 }
 
@@ -61,10 +55,7 @@ fn test_parse_abi() {
 
     assert_eq!(
         parse("3abcdef"),
-        Ok((
-            Abi::Named(UndisambiguatedIdentifier::String(Cow::Borrowed("abc"))),
-            "def"
-        ))
+        Ok((Abi::Named(UndisambiguatedIdentifier(Cow::Borrowed("abc"))), "def"))
     );
 }
 
@@ -218,7 +209,7 @@ fn test_rustc_demangle_crate_with_leading_digit() {
                     path: Path::CrateRoot(id(0, "123foo")).into(),
                     name: Identifier {
                         disambiguator: 0,
-                        name: UndisambiguatedIdentifier::String(Cow::Borrowed("bar")),
+                        name: UndisambiguatedIdentifier(Cow::Borrowed("bar")),
                     }
                 }
                 .into(),
@@ -283,7 +274,7 @@ fn test_rustc_demangle_closure_1() {
 fn test_rustc_demangle_closure_2() {
     let crate_root = Rc::new(Path::CrateRoot(Identifier {
         disambiguator: 0x_8468_17f7_41e5_4dfd,
-        name: UndisambiguatedIdentifier::String(Cow::Borrowed("core")),
+        name: UndisambiguatedIdentifier(Cow::Borrowed("core")),
     }));
 
     let core_slice = Rc::new(Path::Nested {
@@ -416,7 +407,7 @@ fn test_rustc_demangle_dyn_trait() {
                                     }
                                     .into(),
                                     dyn_trait_assoc_bindings: vec![DynTraitAssocBinding {
-                                        name: UndisambiguatedIdentifier::String(Cow::Borrowed("Output")),
+                                        name: UndisambiguatedIdentifier(Cow::Borrowed("Output")),
                                         type_: Type::Basic(BasicType::Unit).into()
                                     }]
                                 }]

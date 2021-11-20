@@ -203,28 +203,28 @@ fn parse_undisambiguated_identifier<'a>(
                     let i = name.bytes().rposition(|c| c == b'_').map_or(0, |i| i + 1);
                     let right = &name[i..];
 
-                    (!right.is_empty()).then(|| {
-                        if right.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'z')) {
-                            let mut bytes = Vec::with_capacity(name.len());
+                    if right.is_empty() {
+                        None
+                    } else if right.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'z')) {
+                        let mut bytes = Vec::with_capacity(name.len());
 
-                            if i != 0 {
-                                bytes.extend(&name.as_bytes()[..i - 1]);
-                                bytes.push(b'-');
-                            }
-
-                            bytes.extend(right.as_bytes());
-
-                            if let Ok(decoded) = punycode::decode(str::from_utf8(&bytes).unwrap()) {
-                                UndisambiguatedIdentifier::String(Cow::Owned(decoded))
-                            } else {
-                                UndisambiguatedIdentifier::Punycode(name)
-                            }
-                        } else {
-                            UndisambiguatedIdentifier::Punycode(name)
+                        if i != 0 {
+                            bytes.extend(&name.as_bytes()[..i - 1]);
+                            bytes.push(b'-');
                         }
-                    })
+
+                        bytes.extend(right.as_bytes());
+
+                        if let Ok(decoded) = punycode::decode(str::from_utf8(&bytes).unwrap()) {
+                            Some(UndisambiguatedIdentifier(Cow::Owned(decoded)))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
                 } else {
-                    Some(UndisambiguatedIdentifier::String(Cow::Borrowed(name)))
+                    Some(UndisambiguatedIdentifier(Cow::Borrowed(name)))
                 }
             })
         })
@@ -342,10 +342,7 @@ fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Ab
 
     alt((
         tag('C').map(|_| Abi::C),
-        parse_undisambiguated_identifier.map_opt(|id| match id {
-            UndisambiguatedIdentifier::String(ref name) => is_abi_name(name).then(|| Abi::Named(id)),
-            UndisambiguatedIdentifier::Punycode(_) => None,
-        }),
+        parse_undisambiguated_identifier.map_opt(|id| is_abi_name(&id.0).then(|| Abi::Named(id))),
     ))
     .parse(input, context)
 }

@@ -48,18 +48,18 @@ assert_eq!(
                 namespace: b't',
                 path: Path::CrateRoot(Identifier {
                     disambiguator: 0x4df1_4705_8689_a776,
-                    name: UndisambiguatedIdentifier::String(Cow::Borrowed("regex"))
+                    name: UndisambiguatedIdentifier(Cow::Borrowed("regex"))
                 })
                 .into(),
                 name: Identifier {
                     disambiguator: 0,
-                    name: UndisambiguatedIdentifier::String(Cow::Borrowed("utf8"))
+                    name: UndisambiguatedIdentifier(Cow::Borrowed("utf8"))
                 }
             }
             .into(),
             name: Identifier {
                 disambiguator: 0,
-                name: UndisambiguatedIdentifier::String(Cow::Borrowed("decode_utf8"))
+                name: UndisambiguatedIdentifier(Cow::Borrowed("decode_utf8"))
             }
         }
         .into(),

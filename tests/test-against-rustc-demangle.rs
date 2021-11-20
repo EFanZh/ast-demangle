@@ -31,11 +31,12 @@ fn demangle_ast_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a 
 fn demangle_rustc_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a str, &'a str)> {
     fn has_error(buffer: &str) -> bool {
         [
-            "<?>",
-            "<? as ?>",
             "{invalid syntax}",
             "{recursion limit reached}",
             "{size limit reached}",
+            "<? as ?>",
+            "<?>",
+            "punycode{",
         ]
         .into_iter()
         .any(|pattern| buffer.contains(pattern))
