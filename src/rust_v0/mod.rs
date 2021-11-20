@@ -75,7 +75,7 @@ pub enum Path<'a> {
     Nested {
         namespace: u8,
         path: Rc<Path<'a>>,
-        name: Identifier<'a>,
+        identifier: Identifier<'a>,
     },
     Generic {
         path: Rc<Path<'a>>,
@@ -111,14 +111,14 @@ pub struct ImplPath<'a> {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Identifier<'a> {
     pub disambiguator: u64,
-    pub name: UndisambiguatedIdentifier<'a>,
+    pub name: Cow<'a, str>,
 }
 
 impl Identifier<'_> {
     /// Returns an object that implements [`Display`] for printing the identifier.
     #[must_use]
     pub fn display(&self) -> impl Display + '_ {
-        display::display_undisambiguated_identifier(&self.name)
+        self.name.as_ref()
     }
 }
 
@@ -127,9 +127,6 @@ impl Display for Identifier<'_> {
         self.display().fmt(f)
     }
 }
-
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct UndisambiguatedIdentifier<'a>(pub Cow<'a, str>);
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum GenericArg<'a> {
@@ -261,7 +258,7 @@ impl Display for FnSig<'_> {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Abi<'a> {
     C,
-    Named(UndisambiguatedIdentifier<'a>),
+    Named(Cow<'a, str>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -278,7 +275,7 @@ pub struct DynTrait<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynTraitAssocBinding<'a> {
-    pub name: UndisambiguatedIdentifier<'a>,
+    pub name: Cow<'a, str>,
     pub type_: Rc<Type<'a>>,
 }
 

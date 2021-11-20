@@ -4,7 +4,7 @@ use crate::mini_parser::parsers::{alphanumeric0, digit1, lower_hex_digit0, tag, 
 use crate::mini_parser::Parser;
 use crate::rust_v0::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier,
-    ImplPath, Path, Symbol, Type, UndisambiguatedIdentifier,
+    ImplPath, Path, Symbol, Type,
 };
 use num_traits::{CheckedNeg, PrimInt};
 use std::borrow::Cow;
@@ -149,11 +149,11 @@ fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(R
             preceded(tag('Y'), parse_type.and(parse_path))
                 .map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
             preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map_opt(
-                |(namespace, path, name)| {
+                |(namespace, path, identifier)| {
                     matches!(namespace.as_bytes()[0], b'A'..=b'Z' | b'a'..=b'z').then(|| Path::Nested {
                         namespace: namespace.as_bytes()[0],
                         path,
-                        name,
+                        identifier,
                     })
                 },
             ),
@@ -193,7 +193,7 @@ fn parse_disambiguator<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> 
 fn parse_undisambiguated_identifier<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
-) -> Result<(UndisambiguatedIdentifier<'a>, IndexedStr<'a>), ()> {
+) -> Result<(Cow<'a, str>, IndexedStr<'a>), ()> {
     tuple((tag('u').opt(), parse_decimal_number, tag('_').opt()))
         .flat_map(|(punycode, length, _)| {
             let is_punycode = punycode.is_some();
@@ -216,7 +216,7 @@ fn parse_undisambiguated_identifier<'a>(
                         bytes.extend(right.as_bytes());
 
                         if let Ok(decoded) = punycode::decode(str::from_utf8(&bytes).unwrap()) {
-                            Some(UndisambiguatedIdentifier(Cow::Owned(decoded)))
+                            Some(Cow::Owned(decoded))
                         } else {
                             None
                         }
@@ -224,7 +224,7 @@ fn parse_undisambiguated_identifier<'a>(
                         None
                     }
                 } else {
-                    Some(UndisambiguatedIdentifier(Cow::Borrowed(name)))
+                    Some(Cow::Borrowed(name))
                 }
             })
         })
@@ -342,7 +342,7 @@ fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Ab
 
     alt((
         tag('C').map(|_| Abi::C),
-        parse_undisambiguated_identifier.map_opt(|id| is_abi_name(&id.0).then(|| Abi::Named(id))),
+        parse_undisambiguated_identifier.map_opt(|id| is_abi_name(&id).then(|| Abi::Named(id))),
     ))
     .parse(input, context)
 }

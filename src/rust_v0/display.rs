@@ -2,7 +2,6 @@
 
 use crate::rust_v0::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type,
-    UndisambiguatedIdentifier,
 };
 use std::any;
 use std::cell::Cell;
@@ -53,15 +52,10 @@ fn display_separated_list(values: impl IntoIterator<Item = impl Display>, separa
 
 pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
     display_fn(move |f| match path {
-        Path::CrateRoot(name) => match style {
-            Style::Short | Style::Normal => write!(f, "{}", display_undisambiguated_identifier(&name.name)),
+        Path::CrateRoot(identifier) => match style {
+            Style::Short | Style::Normal => f.write_str(&identifier.name),
             Style::Long => {
-                write!(
-                    f,
-                    "{}[{:x}]",
-                    &display_undisambiguated_identifier(&name.name),
-                    name.disambiguator
-                )
+                write!(f, "{}[{:x}]", identifier.name, identifier.disambiguator)
             }
         },
         Path::InherentImpl { type_, .. } => {
@@ -75,7 +69,11 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                 display_path(trait_, style, bound_lifetime_depth, false)
             )
         }
-        Path::Nested { namespace, path, name } => match namespace {
+        Path::Nested {
+            namespace,
+            path,
+            identifier,
+        } => match namespace {
             b'A'..=b'Z' => {
                 display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
 
@@ -87,11 +85,11 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                     _ => f.write_char(char::from(*namespace))?,
                 }
 
-                if !name.name.0.is_empty() {
-                    write!(f, ":{}", display_undisambiguated_identifier(&name.name))?;
+                if !identifier.name.is_empty() {
+                    write!(f, ":{}", identifier.name)?;
                 }
 
-                write!(f, "#{}}}", name.disambiguator)
+                write!(f, "#{}}}", identifier.disambiguator)
             }
             b'a'..=b'z' => {
                 if matches!(style, Style::Normal | Style::Long)
@@ -105,13 +103,13 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                 {
                     display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
 
-                    if name.name.0.is_empty() {
+                    if identifier.name.is_empty() {
                         Ok(())
                     } else {
-                        write!(f, "::{}", display_undisambiguated_identifier(&name.name))
+                        write!(f, "::{}", identifier.name)
                     }
                 } else {
-                    write!(f, "{}", display_undisambiguated_identifier(&name.name))
+                    write!(f, "{}", identifier.name)
                 }
             }
             _ => Err(fmt::Error),
@@ -137,12 +135,6 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
             )
         }
     })
-}
-
-pub fn display_undisambiguated_identifier<'a>(
-    undisambiguated_identifier: &'a UndisambiguatedIdentifier,
-) -> impl Display + 'a {
-    display_fn(move |f| f.write_str(&undisambiguated_identifier.0))
 }
 
 fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
@@ -335,7 +327,6 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
         match abi {
             Abi::C => f.write_char('C')?,
             Abi::Named(name) => {
-                let name = name.0.as_ref();
                 let mut iter = name.split('_');
 
                 f.write_str(iter.next().unwrap())?;
@@ -431,7 +422,7 @@ fn display_dyn_trait_assoc_binding<'a>(
         write!(
             f,
             "{} = {}",
-            display_undisambiguated_identifier(&dyn_trait_assoc_binding.name),
+            dyn_trait_assoc_binding.name,
             display_type(&dyn_trait_assoc_binding.type_, style, bound_lifetime_depth)
         )
     })

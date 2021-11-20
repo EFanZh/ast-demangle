@@ -5,7 +5,7 @@
 //! Example:
 //!
 //! ```rust
-//! use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol, UndisambiguatedIdentifier};
+//! use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol};
 //! use std::borrow::Cow;
 //!
 //! let mangled_name = "_RNvNtCs6GSVXm7oiwY_5regex4utf811decode_utf8.llvm.1119170478327948870";
@@ -42,18 +42,18 @@
 //!                 namespace: b't',
 //!                 path: Path::CrateRoot(Identifier {
 //!                     disambiguator: 0x4df1_4705_8689_a776,
-//!                     name: UndisambiguatedIdentifier(Cow::Borrowed("regex"))
+//!                     name: Cow::Borrowed("regex")
 //!                 })
 //!                 .into(),
-//!                 name: Identifier {
+//!                 identifier: Identifier {
 //!                     disambiguator: 0,
-//!                     name: UndisambiguatedIdentifier(Cow::Borrowed("utf8"))
+//!                     name: Cow::Borrowed("utf8")
 //!                 }
 //!             }
 //!             .into(),
-//!             name: Identifier {
+//!             identifier: Identifier {
 //!                 disambiguator: 0,
-//!                 name: UndisambiguatedIdentifier(Cow::Borrowed("decode_utf8"))
+//!                 name: Cow::Borrowed("decode_utf8")
 //!             }
 //!         }
 //!         .into(),
