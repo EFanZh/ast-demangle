@@ -1,5 +1,5 @@
 //! Tools for demangling symbols using
-//! [Rust v0 syntax]((https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#syntax-of-mangled-names)).
+//! [Rust v0 syntax](https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#syntax-of-mangled-names).
 
 pub use self::display::Style as DisplayStyle;
 use std::borrow::Cow;
