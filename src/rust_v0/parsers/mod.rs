@@ -1,4 +1,4 @@
-use crate::mini_parser::combinators::{alt, delimited, preceded, terminated, tuple};
+use crate::mini_parser::combinators::{alt, and, delimited, or, preceded, terminated, tuple};
 use crate::mini_parser::input::{Find, SplitAt, StripPrefix};
 use crate::mini_parser::parsers::{alphanumeric0, digit1, lower_hex_digit0, tag, take};
 use crate::mini_parser::Parser;
@@ -107,6 +107,25 @@ fn limit_recursion_depth<'a, I, T>(
     }
 }
 
+fn back_referenced<'a, T>(
+    index: usize,
+    base_parser: impl Parser<IndexedStr<'a>, Context<'a>, Output = T>,
+    mut get_table_fn: impl for<'b> FnMut(&'b mut Context<'a>) -> &'b mut HashMap<usize, Rc<T>> + Copy,
+) -> impl Parser<IndexedStr<'a>, Context<'a>, Output = Rc<T>>
+where
+    T: 'a,
+{
+    limit_recursion_depth(
+        or(
+            base_parser.map(Rc::new),
+            parse_back_ref.map_opt_with_context(move |back_ref, context| get_table_fn(context).get(&back_ref).cloned()),
+        )
+        .inspect_with_context(move |result, context| {
+            get_table_fn(context).insert(index, Rc::clone(result));
+        }),
+    )
+}
+
 // References:
 //
 // - <https://github.com/rust-lang/rustc-demangle/blob/main/src/v0.rs>.
@@ -132,12 +151,11 @@ fn parse_symbol_inner<'a>(
 }
 
 fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Path<'a>>, IndexedStr<'a>), ()> {
-    let index = input.index;
-
-    limit_recursion_depth(
+    back_referenced(
+        input.index,
         alt((
             preceded(tag('C'), parse_identifier).map(Path::CrateRoot),
-            preceded(tag('M'), parse_impl_path.and(parse_type))
+            preceded(tag('M'), and(parse_impl_path, parse_type))
                 .map(|(impl_path, type_)| Path::InherentImpl { impl_path, type_ }),
             preceded(tag('X'), tuple((parse_impl_path, parse_type, parse_path))).map(|(impl_path, type_, trait_)| {
                 Path::TraitImpl {
@@ -146,7 +164,7 @@ fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(R
                     trait_,
                 }
             }),
-            preceded(tag('Y'), parse_type.and(parse_path))
+            preceded(tag('Y'), and(parse_type, parse_path))
                 .map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
             preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map_opt(
                 |(namespace, path, identifier)| {
@@ -157,21 +175,16 @@ fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(R
                     })
                 },
             ),
-            delimited(tag('I'), parse_path.and(parse_generic_arg.many0()), tag('E'))
+            delimited(tag('I'), and(parse_path, parse_generic_arg.many0()), tag('E'))
                 .map(|(path, generic_args)| Path::Generic { path, generic_args }),
-        ))
-        .map(Rc::new)
-        .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.paths.get(&back_ref).cloned()))
-        .inspect_with_context(move |result, context| {
-            context.paths.insert(index, Rc::clone(result));
-        }),
+        )),
+        |context| &mut context.paths,
     )
     .parse(input, context)
 }
 
 fn parse_impl_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(ImplPath<'a>, IndexedStr<'a>), ()> {
-    opt_u64(parse_disambiguator)
-        .and(parse_path)
+    and(opt_u64(parse_disambiguator), parse_path)
         .map(|(disambiguator, path)| ImplPath { disambiguator, path })
         .parse(input, context)
 }
@@ -180,8 +193,7 @@ fn parse_identifier<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
 ) -> Result<(Identifier<'a>, IndexedStr<'a>), ()> {
-    opt_u64(parse_disambiguator)
-        .and(parse_undisambiguated_identifier)
+    and(opt_u64(parse_disambiguator), parse_undisambiguated_identifier)
         .map(|(disambiguator, name)| Identifier { disambiguator, name })
         .parse(input, context)
 }
@@ -252,36 +264,31 @@ fn parse_binder<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<
 }
 
 fn parse_type<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Type<'a>>, IndexedStr<'a>), ()> {
-    let index = input.index;
-
-    limit_recursion_depth(
+    back_referenced(
+        input.index,
         alt((
             parse_basic_type.map(Type::Basic),
             parse_path.map(Type::Named),
-            preceded(tag('A'), parse_type.and(parse_const)).map(|(type_, length)| Type::Array(type_, length)),
+            preceded(tag('A'), and(parse_type, parse_const)).map(|(type_, length)| Type::Array(type_, length)),
             preceded(tag('S'), parse_type).map(Type::Slice),
             delimited(tag('T'), parse_type.many0(), tag('E')).map(Type::Tuple),
             preceded(
                 tag('R'),
-                parse_lifetime.opt().map(Option::unwrap_or_default).and(parse_type),
+                and(parse_lifetime.opt().map(Option::unwrap_or_default), parse_type),
             )
             .map(|(lifetime, type_)| Type::Ref { lifetime, type_ }),
             preceded(
                 tag('Q'),
-                parse_lifetime.opt().map(Option::unwrap_or_default).and(parse_type),
+                and(parse_lifetime.opt().map(Option::unwrap_or_default), parse_type),
             )
             .map(|(lifetime, type_)| Type::RefMut { lifetime, type_ }),
             preceded(tag('P'), parse_type).map(Type::PtrConst),
             preceded(tag('O'), parse_type).map(Type::PtrMut),
             preceded(tag('F'), parse_fn_sig).map(Type::Fn),
-            preceded(tag('D'), parse_dyn_bounds.and(parse_lifetime))
+            preceded(tag('D'), and(parse_dyn_bounds, parse_lifetime))
                 .map(|(dyn_bounds, lifetime)| Type::DynTrait { dyn_bounds, lifetime }),
-        ))
-        .map(Rc::new)
-        .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.types.get(&back_ref).cloned()))
-        .inspect_with_context(move |result, context| {
-            context.types.insert(index, Rc::clone(result));
-        }),
+        )),
+        |context| &mut context.types,
     )
     .parse(input, context)
 }
@@ -351,8 +358,7 @@ fn parse_dyn_bounds<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
 ) -> Result<(DynBounds<'a>, IndexedStr<'a>), ()> {
-    opt_u64(parse_binder)
-        .and(terminated(parse_dyn_trait.many0(), tag('E')))
+    and(opt_u64(parse_binder), terminated(parse_dyn_trait.many0(), tag('E')))
         .map(|(bound_lifetimes, dyn_traits)| DynBounds {
             bound_lifetimes,
             dyn_traits,
@@ -361,8 +367,7 @@ fn parse_dyn_bounds<'a>(
 }
 
 fn parse_dyn_trait<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(DynTrait<'a>, IndexedStr<'a>), ()> {
-    parse_path
-        .and(parse_dyn_trait_assoc_binding.many0())
+    and(parse_path, parse_dyn_trait_assoc_binding.many0())
         .map(|(path, dyn_trait_assoc_bindings)| DynTrait {
             path,
             dyn_trait_assoc_bindings,
@@ -374,7 +379,7 @@ fn parse_dyn_trait_assoc_binding<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
 ) -> Result<(DynTraitAssocBinding<'a>, IndexedStr<'a>), ()> {
-    preceded(tag('p'), parse_undisambiguated_identifier.and(parse_type))
+    preceded(tag('p'), and(parse_undisambiguated_identifier, parse_type))
         .map(|(name, type_)| DynTraitAssocBinding { name, type_ })
         .parse(input, context)
 }
@@ -382,7 +387,8 @@ fn parse_dyn_trait_assoc_binding<'a>(
 fn parse_const<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Const<'a>>, IndexedStr<'a>), ()> {
     let index = input.index;
 
-    limit_recursion_depth(
+    back_referenced(
+        index,
         alt((
             preceded(tag('a'), parse_const_int).map(Const::I8),
             preceded(tag('h'), parse_const_int).map(Const::U8),
@@ -407,15 +413,11 @@ fn parse_const<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(
             preceded(tag('Q'), parse_const).map(Const::RefMut),
             delimited(tag('A'), parse_const.many0(), tag('E')).map(Const::Array),
             delimited(tag('T'), parse_const.many0(), tag('E')).map(Const::Tuple),
-            preceded(tag('V'), parse_path.and(parse_const_fields))
+            preceded(tag('V'), and(parse_path, parse_const_fields))
                 .map(|(path, fields)| Const::NamedStruct { path, fields }),
             tag('p').map(|_| Const::Placeholder),
-        ))
-        .map(Rc::new)
-        .or(parse_back_ref.map_opt_with_context(|back_ref, context| context.consts.get(&back_ref).cloned()))
-        .inspect_with_context(move |result, context| {
-            context.consts.insert(index, Rc::clone(result));
-        }),
+        )),
+        |context| &mut context.consts,
     )
     .parse(input, context)
 }
@@ -427,7 +429,7 @@ fn parse_const_fields<'a>(
     alt((
         tag('U').map(|_| ConstFields::Unit),
         delimited(tag('T'), parse_const.many0(), tag('E')).map(ConstFields::Tuple),
-        delimited(tag('S'), parse_identifier.and(parse_const).many0(), tag('E')).map(ConstFields::Struct),
+        delimited(tag('S'), and(parse_identifier, parse_const).many0(), tag('E')).map(ConstFields::Struct),
     ))
     .parse(input, context)
 }
@@ -437,22 +439,19 @@ where
     T: CheckedNeg + PrimInt,
 {
     terminated(
-        tag('n')
-            .opt()
-            .and(lower_hex_digit0)
-            .map_opt(|(is_negative, data): (_, &str)| {
-                if data.is_empty() {
-                    Some(T::zero())
-                } else {
-                    let base = T::from_str_radix(data, 16).ok();
+        and(tag('n').opt(), lower_hex_digit0).map_opt(|(is_negative, data): (_, &str)| {
+            if data.is_empty() {
+                Some(T::zero())
+            } else {
+                let base = T::from_str_radix(data, 16).ok();
 
-                    if is_negative.is_none() {
-                        base
-                    } else {
-                        base.and_then(|value| value.checked_neg())
-                    }
+                if is_negative.is_none() {
+                    base
+                } else {
+                    base.and_then(|value| value.checked_neg())
                 }
-            }),
+            }
+        }),
         tag('_'),
     )
     .parse(input, context)
@@ -523,8 +522,7 @@ fn parse_decimal_number<'a, T>(input: IndexedStr<'a>, context: &mut Context<'a>)
 where
     T: PrimInt,
 {
-    tag('0')
-        .or(digit1)
+    or(tag('0'), digit1)
         .map_opt(|num: &str| T::from_str_radix(num, 10).ok())
         .parse(input, context)
 }

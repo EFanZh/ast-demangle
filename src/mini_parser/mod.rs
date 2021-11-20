@@ -1,4 +1,4 @@
-use self::combinators::{And, FlatMap, Map, MapOpt, Opt, Or};
+use self::combinators::{FlatMap, Map, MapOpt, Opt};
 use crate::mini_parser::combinators::{InspectWithContext, Many0, MapOptWithContext};
 
 pub mod combinators;
@@ -10,14 +10,6 @@ pub trait Parser<I, C> {
     type Output;
 
     fn parse(&mut self, input: I, context: &mut C) -> Result<(Self::Output, I), ()>;
-
-    fn and<P>(self, rhs: P) -> And<Self, P>
-    where
-        Self: Sized,
-        P: Parser<I, C>,
-    {
-        combinators::and(self, rhs)
-    }
 
     fn flat_map<F, Q>(self, f: F) -> FlatMap<Self, F>
     where
@@ -74,15 +66,6 @@ pub trait Parser<I, C> {
         I: Clone,
     {
         combinators::opt(self)
-    }
-
-    fn or<P>(self, rhs: P) -> Or<Self, P>
-    where
-        Self: Sized,
-        I: Clone,
-        P: Parser<I, C, Output = Self::Output>,
-    {
-        combinators::or(self, rhs)
     }
 }
 
