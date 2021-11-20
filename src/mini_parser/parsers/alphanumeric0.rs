@@ -1,7 +1,6 @@
-use std::marker::PhantomData;
-
 use crate::mini_parser::input::{Find, SplitAt};
 use crate::mini_parser::{parsers, Parser};
+use std::marker::PhantomData;
 
 pub struct Alphanumeric0<I, C> {
     _phantom: PhantomData<fn(I, &mut C)>,

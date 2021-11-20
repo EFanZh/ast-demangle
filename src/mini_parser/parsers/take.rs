@@ -1,7 +1,6 @@
-use std::marker::PhantomData;
-
 use crate::mini_parser::input::SplitAt;
 use crate::mini_parser::Parser;
+use std::marker::PhantomData;
 
 pub struct Take<I, C> {
     length: usize,
