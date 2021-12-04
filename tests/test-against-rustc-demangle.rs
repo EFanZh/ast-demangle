@@ -8,7 +8,6 @@ fn bounded_writer(buffer: &mut String) -> BoundedWriter<&mut String> {
     BoundedWriter::new(buffer, 65536)
 }
 
-#[allow(clippy::if_then_some_else_none)] // See <https://github.com/rust-lang/rust-clippy/issues/7870>.
 fn demangle_ast_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a str, &'a str)> {
     let mut buffer = bounded_writer(buffer);
     let (symbol, rest) = Symbol::parse_from_str(name).ok()?;
