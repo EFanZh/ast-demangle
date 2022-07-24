@@ -11,14 +11,14 @@ Parses mangled names and produces structured results.
 Example:
 
 ```rust
-use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol, UndisambiguatedIdentifier};
+use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol};
 use std::borrow::Cow;
 
 let mangled_name = "_RNvNtCs6GSVXm7oiwY_5regex4utf811decode_utf8.llvm.1119170478327948870";
 let (symbol, suffix) = Symbol::parse_from_str(mangled_name).unwrap();
 
 // The suffix is returned.
-assert_eq!(suffix, ".llvm.1119170478327948870");
+assert_eq!(suffix, "");
 
 // The default style for displaying is the long format.
 assert_eq!(format!("{}", symbol), "regex[4df147058689a776]::utf8::decode_utf8");
@@ -63,7 +63,8 @@ assert_eq!(
             }
         }
         .into(),
-        instantiating_crate: None
+        instantiating_crate: None,
+        vendor_specific_suffix: Some(".llvm.1119170478327948870"),
     }
 );
 ```

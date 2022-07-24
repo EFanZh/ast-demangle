@@ -10,16 +10,23 @@ fn bounded_writer(buffer: &mut String) -> BoundedWriter<&mut String> {
 
 fn demangle_ast_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a str, &'a str)> {
     let mut buffer = bounded_writer(buffer);
-    let (symbol, rest) = Symbol::parse_from_str(name).ok()?;
+    let (mut symbol, rest) = Symbol::parse_from_str(name).ok()?;
 
-    if rest.is_empty() || rest.starts_with('.') {
-        let suffix = rest.find(".llvm.").map_or(rest, |i| &rest[..i]);
+    if rest.is_empty() {
+        if symbol
+            .vendor_specific_suffix
+            .map_or(false, |suffix| suffix.starts_with(".llvm."))
+        {
+            symbol.vendor_specific_suffix = None;
+        }
 
-        write!(buffer, "{}{}", symbol, suffix).ok()?;
+        let suffix = symbol.vendor_specific_suffix.unwrap_or("");
+
+        write!(buffer, "{symbol}{suffix}").ok()?;
 
         let split = buffer.inner().len();
 
-        write!(buffer, "{:#}{}", symbol, suffix).ok()?;
+        write!(buffer, "{symbol:#}{suffix}").ok()?;
 
         Some(buffer.into_inner().split_at(split))
     } else {
@@ -44,7 +51,7 @@ fn demangle_rustc_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'
     let mut buffer = bounded_writer(buffer);
     let demangle = rustc_demangle::try_demangle(name).ok()?;
 
-    write!(buffer, "{}", demangle).ok()?;
+    write!(buffer, "{demangle}").ok()?;
 
     if has_error(buffer.inner()) {
         return None;
@@ -52,7 +59,7 @@ fn demangle_rustc_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'
 
     let split = buffer.inner().len();
 
-    write!(buffer, "{:#}", demangle).ok()?;
+    write!(buffer, "{demangle:#}").ok()?;
 
     if has_error(buffer.inner()) {
         return None;

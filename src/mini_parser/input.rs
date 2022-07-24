@@ -8,7 +8,7 @@ impl Find for &str {
     type Item = char;
 
     fn find(&self, pattern: impl FnMut(Self::Item) -> bool) -> usize {
-        str::find(self, pattern).unwrap_or_else(|| self.len())
+        str::find(self, pattern).unwrap_or(self.len())
     }
 }
 
@@ -36,6 +36,16 @@ impl<'a> StripPrefix<char> for &'a str {
     type Prefix = Self;
 
     fn strip_prefix(self, prefix: char) -> Option<(Self::Prefix, Self)> {
-        self.starts_with(prefix).then(|| self.split_at(prefix.len_utf8()))
+        self.strip_prefix(prefix)
+            .map(|rest| (&self[..self.len() - rest.len()], rest))
+    }
+}
+
+impl<const N: usize> StripPrefix<[char; N]> for &str {
+    type Prefix = Self;
+
+    fn strip_prefix(self, prefix: [char; N]) -> Option<(Self::Prefix, Self)> {
+        self.strip_prefix(prefix)
+            .map(|rest| (&self[..self.len() - rest.len()], rest))
     }
 }

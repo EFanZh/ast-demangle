@@ -12,7 +12,7 @@
 //! let (symbol, suffix) = Symbol::parse_from_str(mangled_name).unwrap();
 //!
 //! // The suffix is returned.
-//! assert_eq!(suffix, ".llvm.1119170478327948870");
+//! assert_eq!(suffix, "");
 //!
 //! // The default style for displaying is the long format.
 //! assert_eq!(format!("{}", symbol), "regex[4df147058689a776]::utf8::decode_utf8");
@@ -57,7 +57,8 @@
 //!             }
 //!         }
 //!         .into(),
-//!         instantiating_crate: None
+//!         instantiating_crate: None,
+//!         vendor_specific_suffix: Some(".llvm.1119170478327948870"),
 //!     }
 //! );
 //! ```

@@ -17,6 +17,7 @@ pub struct Symbol<'a> {
     pub version: Option<u64>,
     pub path: Rc<Path<'a>>,
     pub instantiating_crate: Option<Rc<Path<'a>>>,
+    pub vendor_specific_suffix: Option<&'a str>,
 }
 
 impl<'a> Symbol<'a> {

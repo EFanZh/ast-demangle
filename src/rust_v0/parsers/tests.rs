@@ -203,7 +203,8 @@ fn test_rustc_demangle_crate_with_leading_digit() {
                     }
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -223,7 +224,8 @@ fn test_rustc_demangle_utf8_idents() {
                     identifier: id(0, "საჭმელად_გემრიელი_სადილი")
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -253,7 +255,8 @@ fn test_rustc_demangle_closure_1() {
                     identifier: id(0, "")
                 }
                 .into(),
-                instantiating_crate: Some(Path::CrateRoot(id(0x_4d64_68d6_c9fd_4bb3, "cc")).into())
+                instantiating_crate: Some(Path::CrateRoot(id(0x_4d64_68d6_c9fd_4bb3, "cc")).into()),
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -350,7 +353,8 @@ fn test_rustc_demangle_closure_2() {
                     identifier: id(0, "")
                 }
                 .into(),
-                instantiating_crate: Some(crate_root)
+                instantiating_crate: Some(crate_root),
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -408,7 +412,8 @@ fn test_rustc_demangle_dyn_trait() {
                     )]
                 }
                 .into(),
-                instantiating_crate: Some(Path::CrateRoot(id(0x_0f1a_6958_f46c_38e4, "std")).into())
+                instantiating_crate: Some(Path::CrateRoot(id(0x_0f1a_6958_f46c_38e4, "std")).into()),
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -435,7 +440,8 @@ fn test_rustc_demangle_const_generics_usize_123() {
                     ]
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -469,7 +475,8 @@ fn test_rustc_demangle_const_generics_u8_11() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -503,7 +510,8 @@ fn test_rustc_demangle_const_generics_i16_152() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -537,7 +545,8 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -571,7 +580,8 @@ fn test_rustc_demangle_const_generics_bool_false() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -605,7 +615,8 @@ fn test_rustc_demangle_const_generics_bool_true() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -639,7 +650,8 @@ fn test_rustc_demangle_const_generics_char_v() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -673,7 +685,8 @@ fn test_rustc_demangle_const_generics_char_lf() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -707,7 +720,8 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                     .into()
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -751,7 +765,8 @@ fn test_rustc_demangle_const_generics_placeholder() {
                     identifier: id(0, "FOO")
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -781,7 +796,8 @@ fn test_rustc_demangle_exponential_explosion() {
                     type_: tuple
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: None,
             },
             "",
         ))
@@ -796,9 +812,10 @@ fn test_rustc_demangle_thinlto() {
             Symbol {
                 version: None,
                 path: Path::CrateRoot(id(0, "foo")).into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: Some(".llvm.9D1C9369"),
             },
-            ".llvm.9D1C9369",
+            ""
         ))
     );
 
@@ -808,9 +825,10 @@ fn test_rustc_demangle_thinlto() {
             Symbol {
                 version: None,
                 path: Path::CrateRoot(id(0, "foo")).into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: Some(".llvm.9D1C9369@@16"),
             },
-            ".llvm.9D1C9369@@16",
+            ""
         ))
     );
 
@@ -825,9 +843,10 @@ fn test_rustc_demangle_thinlto() {
                     identifier: id(0, "foo")
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: Some(".llvm.A5310EB9"),
             },
-            ".llvm.A5310EB9",
+            "",
         ))
     );
 }
@@ -865,9 +884,10 @@ fn test_rustc_demangle_extra_suffix() {
                     identifier: id(0, "FORK_HANDLER_REGISTERED")
                 }
                 .into(),
-                instantiating_crate: None
+                instantiating_crate: None,
+                vendor_specific_suffix: Some(".0.0"),
             },
-            ".0.0",
+            "",
         ))
     );
 }

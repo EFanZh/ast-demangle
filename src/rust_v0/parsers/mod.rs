@@ -61,10 +61,13 @@ impl<'a> SplitAt for IndexedStr<'a> {
     }
 }
 
-impl<'a> StripPrefix<char> for IndexedStr<'a> {
+impl<'a, T> StripPrefix<T> for IndexedStr<'a>
+where
+    &'a str: StripPrefix<T, Prefix = &'a str>,
+{
     type Prefix = &'a str;
 
-    fn strip_prefix(self, prefix: char) -> Option<(Self::Prefix, Self)> {
+    fn strip_prefix(self, prefix: T) -> Option<(Self::Prefix, Self)> {
         let (left, right) = StripPrefix::strip_prefix(self.data, prefix)?;
 
         Some((
@@ -141,13 +144,19 @@ fn parse_symbol_inner<'a>(
     input: IndexedStr<'a>,
     context: &mut Context<'a>,
 ) -> Result<(Symbol<'a>, IndexedStr<'a>), ()> {
-    tuple((parse_decimal_number.opt(), parse_path, parse_path.opt()))
-        .map(|(version, path, instantiating_crate)| Symbol {
-            version,
-            path,
-            instantiating_crate,
-        })
-        .parse(input, context)
+    tuple((
+        parse_decimal_number.opt(),
+        parse_path,
+        parse_path.opt(),
+        parse_vendor_specific_suffix.opt(),
+    ))
+    .map(|(version, path, instantiating_crate, vendor_specific_suffix)| Symbol {
+        version,
+        path,
+        instantiating_crate,
+        vendor_specific_suffix,
+    })
+    .parse(input, context)
 }
 
 fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Rc<Path<'a>>, IndexedStr<'a>), ()> {
@@ -516,6 +525,19 @@ fn parse_back_ref<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Resul
     preceded(tag('B'), parse_base62_number)
         .map_opt(|num| num.try_into().ok())
         .parse(input, context)
+}
+
+fn parse_vendor_specific_suffix<'a>(
+    input: IndexedStr<'a>,
+    _: &mut Context<'a>,
+) -> Result<(&'a str, IndexedStr<'a>), ()> {
+    if input.data.starts_with(['.', '$']) {
+        let length = input.data.len();
+
+        Ok(input.split_at(length).unwrap())
+    } else {
+        Err(())
+    }
 }
 
 fn parse_decimal_number<'a, T>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(T, IndexedStr<'a>), ()>
