@@ -40,12 +40,3 @@ impl<'a> StripPrefix<char> for &'a str {
             .map(|rest| (&self[..self.len() - rest.len()], rest))
     }
 }
-
-impl<const N: usize> StripPrefix<[char; N]> for &str {
-    type Prefix = Self;
-
-    fn strip_prefix(self, prefix: [char; N]) -> Option<(Self::Prefix, Self)> {
-        self.strip_prefix(prefix)
-            .map(|rest| (&self[..self.len() - rest.len()], rest))
-    }
-}
