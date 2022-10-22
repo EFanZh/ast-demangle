@@ -3,7 +3,7 @@
 
 pub use self::display::Style as DisplayStyle;
 use std::borrow::Cow;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::rc::Rc;
 
 mod display;
@@ -57,7 +57,7 @@ impl Display for Symbol<'_> {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Path<'a> {
     CrateRoot(Identifier<'a>),
     InherentImpl {
@@ -82,6 +82,58 @@ pub enum Path<'a> {
         path: Rc<Path<'a>>,
         generic_args: Vec<GenericArg<'a>>,
     },
+}
+
+impl Debug for Path<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        struct DebugNamespace(u8);
+
+        impl Debug for DebugNamespace {
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                f.write_char('b')?;
+                Debug::fmt(&char::from(self.0), f)
+            }
+        }
+
+        match self {
+            Self::CrateRoot(identifier) => f.debug_tuple("CrateRoot").field(identifier).finish(),
+            Self::InherentImpl { impl_path, type_ } => f
+                .debug_struct("InherentImpl")
+                .field("impl_path", impl_path)
+                .field("type_", type_.as_ref())
+                .finish(),
+            Self::TraitImpl {
+                impl_path,
+                type_,
+                trait_,
+            } => f
+                .debug_struct("TraitImpl")
+                .field("impl_path", impl_path)
+                .field("type_", type_.as_ref())
+                .field("trait_", trait_.as_ref())
+                .finish(),
+            Self::TraitDefinition { type_, trait_ } => f
+                .debug_struct("TraitDefinition")
+                .field("type_", type_.as_ref())
+                .field("trait_", trait_.as_ref())
+                .finish(),
+            Self::Nested {
+                namespace,
+                path,
+                identifier,
+            } => f
+                .debug_struct("Nested")
+                .field("namespace", &DebugNamespace(*namespace))
+                .field("path", path.as_ref())
+                .field("identifier", identifier)
+                .finish(),
+            Self::Generic { path, generic_args } => f
+                .debug_struct("Generic")
+                .field("path", path.as_ref())
+                .field("generic_args", &generic_args.as_slice())
+                .finish(),
+        }
+    }
 }
 
 impl Path<'_> {

@@ -108,6 +108,8 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                     } else {
                         write!(f, "::{}", identifier.name)
                     }
+                } else if identifier.name.is_empty() {
+                    display_path(path, style, bound_lifetime_depth, in_value).fmt(f)
                 } else {
                     write!(f, "{}", identifier.name)
                 }
@@ -572,6 +574,45 @@ fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetim
 
 #[cfg(test)]
 mod tests {
+    use super::Style;
+    use crate::rust_v0::Symbol;
+    use std::fmt::Write;
+
+    #[test]
+    fn test_display_path() {
+        let test_cases = [(
+            "_RINvCsd5QWgxammnl_7example3fooNcNtINtNtCs454gRYH7d6L_4core6result6ResultllE2Ok0EB2_",
+            (
+                "foo::<Result<i32, i32>::Ok>",
+                "example::foo::<core::result::Result<i32, i32>::Ok>",
+                "example[9884ce86676676d1]::foo::<core[2f8af133219d6c11]::result::Result<i32, i32>::Ok>",
+            ),
+        )];
+
+        let mut buffer = String::new();
+
+        for (symbol, expected) in test_cases {
+            let symbol = Symbol::parse_from_str(symbol).unwrap().0;
+
+            write!(buffer, "{}", symbol.display(Style::Short)).unwrap();
+
+            let length_1 = buffer.len();
+
+            write!(buffer, "{}", symbol.display(Style::Normal)).unwrap();
+
+            let length_2 = buffer.len();
+
+            write!(buffer, "{}", symbol.display(Style::Long)).unwrap();
+
+            assert_eq!(
+                (&buffer[..length_1], &buffer[length_1..length_2], &buffer[length_2..]),
+                expected
+            );
+
+            buffer.clear();
+        }
+    }
+
     #[test]
     fn test_display_lifetime() {
         #[track_caller]

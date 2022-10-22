@@ -358,7 +358,7 @@ fn parse_abi<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(Ab
 
     alt((
         tag('C').map(|_| Abi::C),
-        parse_undisambiguated_identifier.map_opt(|id| is_abi_name(&id).then(|| Abi::Named(id))),
+        parse_undisambiguated_identifier.map_opt(|id| is_abi_name(&id).then_some(Abi::Named(id))),
     ))
     .parse(input, context)
 }
