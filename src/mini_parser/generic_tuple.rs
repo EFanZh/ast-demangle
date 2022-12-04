@@ -1,6 +1,12 @@
-pub trait Tuple1 {
+pub trait Tuple0 {
+    type AppendOutput<T>;
+
+    fn append<T>(self, value: T) -> Self::AppendOutput<T>;
+}
+
+pub trait Tuple1: Tuple0 {
     type First;
-    type Rest;
+    type Rest: Tuple0;
 
     fn split_first(self) -> (Self::First, Self::Rest);
 }
@@ -18,26 +24,20 @@ where
 {
 }
 
-pub trait TupleAppend<T> {
-    type Output;
+impl Tuple0 for () {
+    type AppendOutput<T> = (T,);
 
-    fn append(self, value: T) -> Self::Output;
-}
-
-impl<T> TupleAppend<T> for () {
-    type Output = (T,);
-
-    fn append(self, value: T) -> Self::Output {
+    fn append<T>(self, value: T) -> Self::AppendOutput<T> {
         (value,)
     }
 }
 
 macro_rules! impl_non_empty_tuple {
     ($first_index:tt $first_name:ident $($index:tt $name:ident)*) => {
-        impl<T, $first_name, $($name,)*> TupleAppend<T> for ($first_name, $($name,)*) {
-            type Output = ($first_name, $($name,)* T);
+        impl<$first_name, $($name,)*> Tuple0 for ($first_name, $($name,)*) {
+            type AppendOutput<T> = ($first_name, $($name,)* T);
 
-            fn append(self, value: T) -> Self::Output {
+            fn append<T>(self, value: T) -> Self::AppendOutput<T> {
                 (self.$first_index, $(self.$index,)* value)
             }
         }

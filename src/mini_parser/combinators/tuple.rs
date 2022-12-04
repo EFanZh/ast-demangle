@@ -1,4 +1,4 @@
-use crate::mini_parser::generic_tuple::{Tuple1, TupleAppend};
+use crate::mini_parser::generic_tuple::{Tuple0, Tuple1};
 use crate::mini_parser::Parser;
 
 pub struct TupleImpl<P, Q> {
@@ -22,9 +22,9 @@ impl<A, I, C> AccParser<A, I, C> for () {
 
 impl<A, I, C, P, Q> AccParser<A, I, C> for TupleImpl<P, Q>
 where
-    A: TupleAppend<P::Output>,
+    A: Tuple0,
     P: Parser<I, C>,
-    Q: AccParser<A::Output, I, C>,
+    Q: AccParser<A::AppendOutput<P::Output>, I, C>,
 {
     type Output = Q::Output;
 
