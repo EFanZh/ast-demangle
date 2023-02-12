@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 ast-demangle = { path = ".." }
-libfuzzer-sys = "*"
+libfuzzer-sys = "0.4"
 rustc-demangle = "0.1"
 test-utilities = { path = "../test-utilities" }
 

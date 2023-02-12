@@ -32,7 +32,7 @@ pub trait StripPrefix<P>: Sized {
     fn strip_prefix(self, prefix: P) -> Option<(Self::Prefix, Self)>;
 }
 
-impl<'a> StripPrefix<char> for &'a str {
+impl StripPrefix<char> for &str {
     type Prefix = Self;
 
     fn strip_prefix(self, prefix: char) -> Option<(Self::Prefix, Self)> {

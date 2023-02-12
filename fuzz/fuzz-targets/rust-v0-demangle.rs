@@ -16,15 +16,15 @@ fn fuzz_with(data: &str) {
         let mut sink_1 = bounded_writer();
 
         if let Ok((symbol, _)) = Symbol::parse_from_str(data) {
-            let _ = write!(sink_1, "{}", symbol);
-            let _ = write!(sink_1, "{:#}", symbol);
+            let _ = write!(sink_1, "{symbol}");
+            let _ = write!(sink_1, "{symbol:#}");
         }
 
         let mut sink_2 = bounded_writer();
 
         if let Ok(symbol) = rustc_demangle::try_demangle(data) {
-            let _ = write!(sink_2, "{}", symbol);
-            let _ = write!(sink_2, "{:#}", symbol);
+            let _ = write!(sink_2, "{symbol}");
+            let _ = write!(sink_2, "{symbol:#}");
         }
     }
 }

@@ -266,8 +266,8 @@ fn test_rustc_demangle_closure_1() {
 #[test]
 fn test_rustc_demangle_closure_2() {
     let crate_root = Rc::new(Path::CrateRoot(Identifier {
-        disambiguator: 0x_8468_17f7_41e5_4dfd,
         name: Cow::Borrowed("core"),
+        disambiguator: 0x_8468_17f7_41e5_4dfd,
     }));
 
     let core_slice = Rc::new(Path::Nested {

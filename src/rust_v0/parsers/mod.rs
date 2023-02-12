@@ -177,7 +177,7 @@ fn parse_path<'a>(input: IndexedStr<'a>, context: &mut Context<'a>) -> Result<(R
                 .map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
             preceded(tag('N'), tuple((take(1_usize), parse_path, parse_identifier))).map_opt(
                 |(namespace, path, identifier)| {
-                    matches!(namespace.as_bytes()[0], b'A'..=b'Z' | b'a'..=b'z').then(|| Path::Nested {
+                    namespace.as_bytes()[0].is_ascii_alphabetic().then(|| Path::Nested {
                         namespace: namespace.as_bytes()[0],
                         path,
                         identifier,
@@ -236,11 +236,7 @@ fn parse_undisambiguated_identifier<'a>(
 
                         bytes.extend(right.as_bytes());
 
-                        if let Ok(decoded) = punycode::decode(str::from_utf8(&bytes).unwrap()) {
-                            Some(Cow::Owned(decoded))
-                        } else {
-                            None
-                        }
+                        punycode::decode(str::from_utf8(&bytes).unwrap()).ok().map(Cow::Owned)
                     } else {
                         None
                     }

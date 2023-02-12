@@ -4,7 +4,6 @@ use crate::rust_v0::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type,
 };
 use std::any;
-use std::cell::Cell;
 use std::fmt::{self, Display, Formatter, Write};
 
 /// Denote the style for displaying the symbol.
@@ -19,39 +18,8 @@ pub enum Style {
     Long,
 }
 
-fn display_fn(f: impl Fn(&mut Formatter) -> fmt::Result) -> impl Display {
-    struct Wrapper<F>(F);
-
-    impl<F: Fn(&mut Formatter) -> fmt::Result> Display for Wrapper<F> {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            self.0(f)
-        }
-    }
-
-    Wrapper(f)
-}
-
-fn display_separated_list(values: impl IntoIterator<Item = impl Display>, separator: impl Display) -> impl Display {
-    let values = Cell::new(Some(values));
-
-    display_fn(move |f| {
-        let mut iter = values.take().unwrap().into_iter();
-
-        if let Some(first) = iter.next() {
-            first.fmt(f)?;
-
-            for value in iter {
-                separator.fmt(f)?;
-                value.fmt(f)?;
-            }
-        }
-
-        Ok(())
-    })
-}
-
 pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
-    display_fn(move |f| match path {
+    fmt_tools::fmt_fn(move |f| match path {
         Path::CrateRoot(identifier) => match style {
             Style::Short | Style::Normal => f.write_str(&identifier.name),
             Style::Long => {
@@ -126,8 +94,8 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
             write!(
                 f,
                 "<{}>",
-                display_separated_list(
-                    generic_args.iter().map(|generic_arg| display_generic_arg(
+                fmt_tools::fmt_separated_display_list(
+                    || generic_args.iter().map(|generic_arg| display_generic_arg(
                         generic_arg,
                         style,
                         bound_lifetime_depth,
@@ -140,7 +108,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
 }
 
 fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         f.write_char('\'')?;
 
         if lifetime == 0 {
@@ -149,7 +117,7 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
             if depth < 26 {
                 f.write_char(char::from(b'a' + u8::try_from(depth).unwrap()))
             } else {
-                write!(f, "_{}", depth)
+                write!(f, "_{depth}")
             }
         } else {
             Err(fmt::Error)
@@ -162,7 +130,7 @@ pub fn display_generic_arg<'a>(
     style: Style,
     bound_lifetime_depth: u64,
 ) -> impl Display + 'a {
-    display_fn(move |f| match generic_arg {
+    fmt_tools::fmt_fn(move |f| match generic_arg {
         GenericArg::Lifetime(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
         GenericArg::Type(type_) => display_type(type_, style, bound_lifetime_depth).fmt(f),
         GenericArg::Const(const_) => display_const(const_, style, bound_lifetime_depth, false).fmt(f),
@@ -170,12 +138,12 @@ pub fn display_generic_arg<'a>(
 }
 
 fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Display {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         write!(
             f,
             "for<{}>",
-            display_separated_list(
-                (1..=bound_lifetimes)
+            fmt_tools::fmt_separated_display_list(
+                || (1..=bound_lifetimes)
                     .rev()
                     .map(|i| display_lifetime(i, bound_lifetime_depth + bound_lifetimes)),
                 ", "
@@ -185,7 +153,7 @@ fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Displ
 }
 
 pub fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    display_fn(move |f| match type_ {
+    fmt_tools::fmt_fn(move |f| match type_ {
         Type::Basic(basic_type) => display_basic_type(*basic_type).fmt(f),
         Type::Named(path) => display_path(path, style, bound_lifetime_depth, false).fmt(f),
         Type::Array(type_, length) => {
@@ -203,8 +171,8 @@ pub fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64
             write!(
                 f,
                 "({}",
-                display_separated_list(
-                    tuple_types
+                fmt_tools::fmt_separated_display_list(
+                    || tuple_types
                         .iter()
                         .map(|type_| { display_type(type_, style, bound_lifetime_depth) }),
                     ", "
@@ -255,7 +223,7 @@ pub fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64
 }
 
 pub fn display_basic_type(basic_type: BasicType) -> impl Display {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         f.write_str(match basic_type {
             BasicType::I8 => "i8",
             BasicType::Bool => "bool",
@@ -283,7 +251,7 @@ pub fn display_basic_type(basic_type: BasicType) -> impl Display {
 }
 
 pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         if fn_sig.bound_lifetimes != 0 {
             write!(f, "{} ", display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth))?;
         }
@@ -301,8 +269,8 @@ pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth:
         write!(
             f,
             "fn({})",
-            display_separated_list(
-                fn_sig
+            fmt_tools::fmt_separated_display_list(
+                || fn_sig
                     .argument_types
                     .iter()
                     .map(|type_| { display_type(type_, style, bound_lifetime_depth) }),
@@ -310,7 +278,7 @@ pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth:
             )
         )?;
 
-        if let Type::Basic(BasicType::Unit) = fn_sig.return_type.as_ref() {
+        if matches!(fn_sig.return_type.as_ref(), Type::Basic(BasicType::Unit)) {
             Ok(())
         } else {
             write!(
@@ -323,7 +291,7 @@ pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth:
 }
 
 fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         f.write_char('"')?;
 
         match abi {
@@ -334,7 +302,7 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
                 f.write_str(iter.next().unwrap())?;
 
                 for item in iter {
-                    write!(f, "-{}", item)?;
+                    write!(f, "-{item}")?;
                 }
             }
         }
@@ -344,7 +312,7 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
 }
 
 fn display_dyn_bounds<'a>(dyn_bounds: &'a DynBounds, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         f.write_str("dyn ")?;
 
         if dyn_bounds.bound_lifetimes != 0 {
@@ -357,11 +325,13 @@ fn display_dyn_bounds<'a>(dyn_bounds: &'a DynBounds, style: Style, bound_lifetim
 
         let bound_lifetime_depth = bound_lifetime_depth + dyn_bounds.bound_lifetimes;
 
-        display_separated_list(
-            dyn_bounds
-                .dyn_traits
-                .iter()
-                .map(move |dyn_trait| display_dyn_trait(dyn_trait, style, bound_lifetime_depth)),
+        fmt_tools::fmt_separated_display_list(
+            || {
+                dyn_bounds
+                    .dyn_traits
+                    .iter()
+                    .map(move |dyn_trait| display_dyn_trait(dyn_trait, style, bound_lifetime_depth))
+            },
             " + ",
         )
         .fmt(f)
@@ -369,7 +339,7 @@ fn display_dyn_bounds<'a>(dyn_bounds: &'a DynBounds, style: Style, bound_lifetim
 }
 
 fn display_dyn_trait<'a>(dyn_trait: &'a DynTrait, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         if dyn_trait.dyn_trait_assoc_bindings.is_empty() {
             display_path(&dyn_trait.path, style, bound_lifetime_depth, false).fmt(f)
         } else if let Path::Generic { path, generic_args } = dyn_trait.path.as_ref() {
@@ -377,13 +347,13 @@ fn display_dyn_trait<'a>(dyn_trait: &'a DynTrait, style: Style, bound_lifetime_d
                 f,
                 "{}<{}>",
                 display_path(path, style, bound_lifetime_depth, false),
-                display_separated_list(
-                    generic_args
+                fmt_tools::fmt_separated_display_list(
+                    || generic_args
                         .iter()
                         .map(Ok)
                         .chain(dyn_trait.dyn_trait_assoc_bindings.iter().map(Err))
                         .map(|value| {
-                            display_fn(move |f| match value {
+                            fmt_tools::fmt_fn(move |f| match value {
                                 Ok(generic_arg) => display_generic_arg(generic_arg, style, bound_lifetime_depth).fmt(f),
                                 Err(dyn_trait_assoc_binding) => display_dyn_trait_assoc_binding(
                                     dyn_trait_assoc_binding,
@@ -401,8 +371,8 @@ fn display_dyn_trait<'a>(dyn_trait: &'a DynTrait, style: Style, bound_lifetime_d
                 f,
                 "{}<{}>",
                 display_path(&dyn_trait.path, style, bound_lifetime_depth, false),
-                display_separated_list(
-                    dyn_trait
+                fmt_tools::fmt_separated_display_list(
+                    || dyn_trait
                         .dyn_trait_assoc_bindings
                         .iter()
                         .map(|dyn_trait_assoc_binding| {
@@ -420,7 +390,7 @@ fn display_dyn_trait_assoc_binding<'a>(
     style: Style,
     bound_lifetime_depth: u64,
 ) -> impl Display + 'a {
-    display_fn(move |f| {
+    fmt_tools::fmt_fn(move |f| {
         write!(
             f,
             "{} = {}",
@@ -431,7 +401,7 @@ fn display_dyn_trait_assoc_binding<'a>(
 }
 
 fn write_integer<T: Display>(f: &mut Formatter, value: T, style: Style) -> fmt::Result {
-    write!(f, "{}", value)?;
+    write!(f, "{value}")?;
 
     if matches!(style, Style::Long) {
         f.write_str(any::type_name::<T>())
@@ -446,7 +416,7 @@ pub fn display_const<'a>(
     bound_lifetime_depth: u64,
     in_value: bool,
 ) -> impl Display + 'a {
-    display_fn(move |f| match *const_ {
+    fmt_tools::fmt_fn(move |f| match *const_ {
         Const::I8(value) => write_integer(f, value, style),
         Const::U8(value) => write_integer(f, value, style),
         Const::Isize(value) => write_integer(f, value, style),
@@ -459,18 +429,18 @@ pub fn display_const<'a>(
         Const::U16(value) => write_integer(f, value, style),
         Const::I64(value) => write_integer(f, value, style),
         Const::U64(value) => write_integer(f, value, style),
-        Const::Bool(value) => write!(f, "{}", value),
-        Const::Char(value) => write!(f, "{:?}", value),
+        Const::Bool(value) => write!(f, "{value}"),
+        Const::Char(value) => write!(f, "{value:?}"),
         Const::Str(ref value) => {
             if in_value {
-                write!(f, "*{:?}", value)
+                write!(f, "*{value:?}")
             } else {
-                write!(f, "{{*{:?}}}", value)
+                write!(f, "{{*{value:?}}}")
             }
         }
         Const::Ref(ref value) => {
             if let Const::Str(value) = value.as_ref() {
-                write!(f, "{:?}", value)
+                write!(f, "{value:?}")
             } else if in_value {
                 write!(f, "&{}", display_const(value, style, bound_lifetime_depth, true))
             } else {
@@ -481,39 +451,43 @@ pub fn display_const<'a>(
             let inner = display_const(value, style, bound_lifetime_depth, true);
 
             if in_value {
-                write!(f, "&mut {}", inner)
+                write!(f, "&mut {inner}")
             } else {
-                write!(f, "{{&mut {}}}", inner)
+                write!(f, "{{&mut {inner}}}")
             }
         }
         Const::Array(ref items) => {
-            let inner = display_separated_list(
-                items
-                    .iter()
-                    .map(|item| display_const(item, style, bound_lifetime_depth, true)),
+            let inner = fmt_tools::fmt_separated_display_list(
+                || {
+                    items
+                        .iter()
+                        .map(|item| display_const(item, style, bound_lifetime_depth, true))
+                },
                 ", ",
             );
 
             if in_value {
-                write!(f, "[{}]", inner)
+                write!(f, "[{inner}]")
             } else {
-                write!(f, "{{[{}]}}", inner)
+                write!(f, "{{[{inner}]}}")
             }
         }
         Const::Tuple(ref items) => {
-            let inner = display_separated_list(
-                items
-                    .iter()
-                    .map(|item| display_const(item, style, bound_lifetime_depth, true)),
+            let inner = fmt_tools::fmt_separated_display_list(
+                || {
+                    items
+                        .iter()
+                        .map(|item| display_const(item, style, bound_lifetime_depth, true))
+                },
                 ", ",
             );
 
             if in_value {
-                write!(f, "({}", inner)?;
+                write!(f, "({inner}")?;
 
                 f.write_str(if items.len() == 1 { ",)" } else { ")" })
             } else {
-                write!(f, "{{({}", inner)?;
+                write!(f, "{{({inner}")?;
 
                 f.write_str(if items.len() == 1 { ",)}" } else { ")}" })
             }
@@ -523,9 +497,9 @@ pub fn display_const<'a>(
             let fields = display_const_fields(fields, style, bound_lifetime_depth);
 
             if in_value {
-                write!(f, "{}{}", path, fields)
+                write!(f, "{path}{fields}")
             } else {
-                write!(f, "{{{}{}}}", path, fields)
+                write!(f, "{{{path}{fields}}}")
             }
         }
         Const::Placeholder => write!(f, "_"),
@@ -533,13 +507,13 @@ pub fn display_const<'a>(
 }
 
 fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
-    display_fn(move |f| match fields {
+    fmt_tools::fmt_fn(move |f| match fields {
         ConstFields::Unit => Ok(()),
         ConstFields::Tuple(fields) => write!(
             f,
             "({})",
-            display_separated_list(
-                fields
+            fmt_tools::fmt_separated_display_list(
+                || fields
                     .iter()
                     .map(|field| display_const(field, style, bound_lifetime_depth, true)),
                 ", "
@@ -553,9 +527,9 @@ fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetim
                 write!(
                     f,
                     " {{ {} }}",
-                    display_separated_list(
-                        fields.iter().map(|(name, value)| {
-                            display_fn(move |f| {
+                    fmt_tools::fmt_separated_display_list(
+                        || fields.iter().map(|(name, value)| {
+                            fmt_tools::fmt_fn(move |f| {
                                 write!(
                                     f,
                                     "{}: {}",
