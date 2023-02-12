@@ -94,7 +94,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
             b'a'..=b'z' => {
                 if matches!(style, Style::Normal | Style::Long)
                     || matches!(
-                        path.as_ref(),
+                        **path,
                         Path::InherentImpl { .. }
                             | Path::TraitImpl { .. }
                             | Path::TraitDefinition { .. }

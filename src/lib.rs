@@ -41,19 +41,19 @@
 //!             path: Path::Nested {
 //!                 namespace: b't',
 //!                 path: Path::CrateRoot(Identifier {
+//!                     name: Cow::Borrowed("regex"),
 //!                     disambiguator: 0x4df1_4705_8689_a776,
-//!                     name: Cow::Borrowed("regex")
 //!                 })
 //!                 .into(),
 //!                 identifier: Identifier {
+//!                     name: Cow::Borrowed("utf8"),
 //!                     disambiguator: 0,
-//!                     name: Cow::Borrowed("utf8")
 //!                 }
 //!             }
 //!             .into(),
 //!             identifier: Identifier {
+//!                 name: Cow::Borrowed("decode_utf8"),
 //!                 disambiguator: 0,
-//!                 name: Cow::Borrowed("decode_utf8")
 //!             }
 //!         }
 //!         .into(),

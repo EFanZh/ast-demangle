@@ -10,8 +10,8 @@ use std::rc::Rc;
 
 fn id(disambiguator: u64, name: &str) -> Identifier {
     Identifier {
-        disambiguator,
         name: Cow::Borrowed(name),
+        disambiguator,
     }
 }
 
@@ -198,8 +198,8 @@ fn test_rustc_demangle_crate_with_leading_digit() {
                     namespace: b'v',
                     path: Path::CrateRoot(id(0, "123foo")).into(),
                     identifier: Identifier {
-                        disambiguator: 0,
                         name: Cow::Borrowed("bar"),
+                        disambiguator: 0,
                     }
                 }
                 .into(),
@@ -290,8 +290,8 @@ fn test_rustc_demangle_closure_2() {
                             namespace: b'k',
                             path: Path::TraitImpl {
                                 impl_path: ImplPath {
+                                    path: Rc::clone(&core_slice),
                                     disambiguator: 131,
-                                    path: Rc::clone(&core_slice)
                                 },
                                 type_: Type::Named(
                                     Path::Generic {
@@ -457,8 +457,8 @@ fn test_rustc_demangle_const_generics_u8_11() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -492,8 +492,8 @@ fn test_rustc_demangle_const_generics_i16_152() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -527,8 +527,8 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -562,8 +562,8 @@ fn test_rustc_demangle_const_generics_bool_false() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -597,8 +597,8 @@ fn test_rustc_demangle_const_generics_bool_true() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -632,8 +632,8 @@ fn test_rustc_demangle_const_generics_char_v() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -667,8 +667,8 @@ fn test_rustc_demangle_const_generics_char_lf() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -702,8 +702,8 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                     },
                     type_: Type::Named(
                         Path::Generic {
@@ -741,8 +741,8 @@ fn test_rustc_demangle_const_generics_placeholder() {
                         namespace: b'v',
                         path: Path::InherentImpl {
                             impl_path: ImplPath {
+                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                                 disambiguator: 0,
-                                path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into()
                             },
                             type_: Type::Named(
                                 Path::Generic {
@@ -790,8 +790,8 @@ fn test_rustc_demangle_exponential_explosion() {
                 version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
+                        path: Path::CrateRoot(id(0, "")).into(),
                         disambiguator: 0,
-                        path: Path::CrateRoot(id(0, "")).into()
                     },
                     type_: tuple
                 }
