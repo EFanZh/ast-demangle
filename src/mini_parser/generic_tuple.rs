@@ -32,8 +32,8 @@ impl Tuple0 for () {
     }
 }
 
-macro_rules! impl_non_empty_tuple {
-    ($first_index:tt $first_name:ident $($index:tt $name:ident)*) => {
+macro_rules! impl_non_empty_tuples {
+    (@helper [$first_index:tt $first_name:ident $($index:tt $name:ident)*]) => {
         impl<$first_name, $($name,)*> Tuple0 for ($first_name, $($name,)*) {
             type AppendOutput<T> = ($first_name, $($name,)* T);
 
@@ -51,15 +51,9 @@ macro_rules! impl_non_empty_tuple {
             }
         }
     };
-}
-
-macro_rules! impl_non_empty_tuples {
     (@helper [$($arg:tt)*] $index:tt $name:ident $($rest:tt)*) => {
-        impl_non_empty_tuple! { $($arg)* }
+        impl_non_empty_tuples! { @helper [$($arg)*] }
         impl_non_empty_tuples! { @helper [$($arg)* $index $name] $($rest)* }
-    };
-    (@helper [$($arg:tt)*]) => {
-        impl_non_empty_tuple! { $($arg)* }
     };
     (($first_index:tt, $first_name:ident), $(($index:tt, $name:ident),)*) => {
         impl_non_empty_tuples! { @helper [$first_index $first_name] $($index $name)* }
