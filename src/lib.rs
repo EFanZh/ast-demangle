@@ -84,7 +84,6 @@
     unused_lifetimes,
     unused_macro_rules,
     unused_qualifications,
-    unused_tuple_struct_fields,
     variant_size_differences,
     clippy::alloc_instead_of_core,
     clippy::allow_attributes_without_reason,
@@ -176,8 +175,4 @@
     clippy::use_debug
 )]
 
-#[cfg(test)]
-use rustc_demangle as _;
-
-mod mini_parser;
 pub mod rust_v0;

@@ -9,14 +9,15 @@ name = "ast-demangle"
 repository = "https://github.com/EFanZh/ast-demangle"
 version = "0.4.0"
 
+[workspace]
+members = ["crates/mini-parser", "fuzz", "test-utilities"]
+
 [dependencies]
 fmt-tools = "0.1"
+mini-parser = { path = "crates/mini-parser" }
 num-traits = "0.2"
 punycode = "0.4"
 
 [dev-dependencies]
 rustc-demangle = "0.1"
 test-utilities = { path = "test-utilities" }
-
-[workspace]
-members = ["fuzz", "test-utilities"]
