@@ -4,10 +4,8 @@ jobs:
     rustfmt:
         runs-on: ${{ matrix.os }}
         steps:
-          - uses: actions/checkout@v2
-          - uses: actions-rs/toolchain@v1
-            with:
-                components: rustfmt
+          - uses: actions/checkout@v4
+          - run: rustup update
           - run: cargo fmt --all -- --check
         strategy:
             matrix:
@@ -18,10 +16,8 @@ jobs:
     clippy:
         runs-on: ${{ matrix.os }}
         steps:
-          - uses: actions/checkout@v2
-          - uses: actions-rs/toolchain@v1
-            with:
-                components: clippy
+          - uses: actions/checkout@v4
+          - run: rustup update
           - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
         strategy:
             matrix:
@@ -32,8 +28,8 @@ jobs:
     tests:
         runs-on: ${{ matrix.os }}
         steps:
-          - uses: actions/checkout@v2
-          - uses: actions-rs/toolchain@v1
+          - uses: actions/checkout@v4
+          - run: rustup update
           - run: cargo test --workspace
         strategy:
             matrix:
@@ -44,20 +40,12 @@ jobs:
     coverage:
         runs-on: ubuntu-latest
         steps:
-          - uses: actions-rs/install@v0.1
-            with:
-                crate: cargo-llvm-cov
-          - uses: actions/checkout@v2
-          - uses: actions-rs/toolchain@v1
-            with:
-                toolchain: nightly
-                override: true
-                components: llvm-tools-preview
+          - uses: actions/checkout@v4
+          - run: rustup update
           - run: cargo llvm-cov --lcov --workspace --output-path lcov.info
-          - uses: codecov/codecov-action@v1
+          - uses: codecov/codecov-action@v5
             with:
-                file: lcov.info
-          - uses: coverallsapp/github-action@master
+                files: coverage/lcov.info
+          - uses: coverallsapp/github-action@v2
             with:
                 github-token: ${{ secrets.GITHUB_TOKEN }}
-                path-to-lcov: lcov.info
