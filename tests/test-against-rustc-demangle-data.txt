@@ -82,15 +82,15 @@ _R.llvm.FFFFFFFFFFFFFFFFFFFFFFFFFFFFFADAA
 _R.llvm.Y
 _R.lvm..l.lvm.lvm.lvm.Ylvm.vlvm.lvm.-lvm.lvm.lvm.lvm.v.alvm.lvm.vlvm.lvm.-Ylvm.
 _R.vm.vvm..vm.
-# _R0._Y10
-# _R2YS{%{
-# _R55545555{
-# _R555555
-# _R555555555555555555555Y
-# _R5568319Y
-# _R6llllllllllllllllll
-# _R8.llvm.8888__y
-# _R99999999999999999999999999999999YCC_WZ
+_R0._Y10
+_R2YS{%{
+_R55545555{
+_R555555
+_R555555555555555555555Y
+_R5568319Y
+_R6llllllllllllllllll
+_R8.llvm.8888__y
+_R99999999999999999999999999999999YCC_WZ
 _RA.llvm.
 _RAm.llvm.
 _RB553_5
