@@ -4,7 +4,7 @@ use crate::rust_v0::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Path, Type,
 };
 use std::any;
-use std::fmt::{self, Display, Formatter, Write};
+use std::fmt::{self, Debug, Display, Formatter, LowerHex, Write};
 
 /// Denote the style for displaying the symbol.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -20,22 +20,28 @@ pub enum Style {
 
 pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| match path {
-        Path::CrateRoot(identifier) => match style {
-            Style::Long if identifier.disambiguator != 0 => {
-                write!(f, "{}[{:x}]", identifier.name, identifier.disambiguator)
+        Path::CrateRoot(identifier) => {
+            f.write_str(&identifier.name)?;
+
+            if matches!(style, Style::Long) && identifier.disambiguator != 0 {
+                f.write_char('[')?;
+                LowerHex::fmt(&identifier.disambiguator, f)?;
+                f.write_char(']')?;
             }
-            _ => f.write_str(&identifier.name),
-        },
+
+            Ok(())
+        }
         Path::InherentImpl { type_, .. } => {
-            write!(f, "<{}>", display_type(type_, style, bound_lifetime_depth))
+            f.write_char('<')?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)?;
+            f.write_char('>')
         }
         Path::TraitImpl { type_, trait_, .. } | Path::TraitDefinition { type_, trait_ } => {
-            write!(
-                f,
-                "<{} as {}>",
-                display_type(type_, style, bound_lifetime_depth),
-                display_path(trait_, style, bound_lifetime_depth, false)
-            )
+            f.write_char('<')?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)?;
+            f.write_str(" as ")?;
+            Display::fmt(&display_path(trait_, style, bound_lifetime_depth, false), f)?;
+            f.write_char('>')
         }
         Path::Nested {
             namespace,
@@ -43,7 +49,7 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
             identifier,
         } => match namespace {
             b'A'..=b'Z' => {
-                display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
+                Display::fmt(&display_path(path, style, bound_lifetime_depth, in_value), f)?;
 
                 f.write_str("::{")?;
 
@@ -54,10 +60,13 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                 }
 
                 if !identifier.name.is_empty() {
-                    write!(f, ":{}", identifier.name)?;
+                    f.write_str(":")?;
+                    f.write_str(&identifier.name)?;
                 }
 
-                write!(f, "#{}}}", identifier.disambiguator)
+                f.write_char('#')?;
+                Display::fmt(&identifier.disambiguator, f)?;
+                f.write_char('}')
             }
             b'a'..=b'z' => {
                 if matches!(style, Style::Normal | Style::Long)
@@ -69,40 +78,44 @@ pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64,
                             | Path::Generic { .. }
                     )
                 {
-                    display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
+                    Display::fmt(&display_path(path, style, bound_lifetime_depth, in_value), f)?;
 
                     if identifier.name.is_empty() {
                         Ok(())
                     } else {
-                        write!(f, "::{}", identifier.name)
+                        f.write_str("::")?;
+                        f.write_str(&identifier.name)
                     }
                 } else if identifier.name.is_empty() {
-                    display_path(path, style, bound_lifetime_depth, in_value).fmt(f)
+                    Display::fmt(&display_path(path, style, bound_lifetime_depth, in_value), f)
                 } else {
-                    write!(f, "{}", identifier.name)
+                    f.write_str(&identifier.name)
                 }
             }
             _ => Err(fmt::Error),
         },
         Path::Generic { path, generic_args } => {
-            display_path(path, style, bound_lifetime_depth, in_value).fmt(f)?;
+            Display::fmt(&display_path(path, style, bound_lifetime_depth, in_value), f)?;
 
             if in_value {
                 f.write_str("::")?;
             }
 
-            write!(
+            f.write_char('<')?;
+
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        generic_args
+                            .iter()
+                            .map(|generic_arg| display_generic_arg(generic_arg, style, bound_lifetime_depth))
+                    },
+                    ", ",
+                ),
                 f,
-                "<{}>",
-                fmt_tools::fmt_separated_display_list(
-                    || generic_args.iter().map(|generic_arg| display_generic_arg(
-                        generic_arg,
-                        style,
-                        bound_lifetime_depth,
-                    )),
-                    ", "
-                )
-            )
+            )?;
+
+            f.write_char('>')
         }
     })
 }
@@ -117,7 +130,8 @@ fn display_lifetime(lifetime: u64, bound_lifetime_depth: u64) -> impl Display {
             if depth < 26 {
                 f.write_char(char::from(b'a' + u8::try_from(depth).unwrap()))
             } else {
-                write!(f, "_{depth}")
+                f.write_char('_')?;
+                Display::fmt(&depth, f)
             }
         } else {
             Err(fmt::Error)
@@ -139,44 +153,53 @@ pub fn display_generic_arg<'a>(
 
 fn display_binder(bound_lifetimes: u64, bound_lifetime_depth: u64) -> impl Display {
     fmt_tools::fmt_fn(move |f| {
-        write!(
+        f.write_str("for<")?;
+
+        Display::fmt(
+            &fmt_tools::fmt_separated_display_list(
+                || {
+                    (1..=bound_lifetimes)
+                        .rev()
+                        .map(|i| display_lifetime(i, bound_lifetime_depth + bound_lifetimes))
+                },
+                ", ",
+            ),
             f,
-            "for<{}>",
-            fmt_tools::fmt_separated_display_list(
-                || (1..=bound_lifetimes)
-                    .rev()
-                    .map(|i| display_lifetime(i, bound_lifetime_depth + bound_lifetimes)),
-                ", "
-            )
-        )
+        )?;
+
+        f.write_char('>')
     })
 }
 
 pub fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| match type_ {
-        Type::Basic(basic_type) => display_basic_type(*basic_type).fmt(f),
-        Type::Named(path) => display_path(path, style, bound_lifetime_depth, false).fmt(f),
+        Type::Basic(basic_type) => Display::fmt(&display_basic_type(*basic_type), f),
+        Type::Named(path) => Display::fmt(&display_path(path, style, bound_lifetime_depth, false), f),
         Type::Array(type_, length) => {
-            write!(
-                f,
-                "[{}; {}]",
-                display_type(type_, style, bound_lifetime_depth),
-                display_const(length, style, bound_lifetime_depth, true)
-            )
+            f.write_char('[')?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)?;
+            f.write_str("; ")?;
+            Display::fmt(&display_const(length, style, bound_lifetime_depth, true), f)?;
+            f.write_char(']')
         }
         Type::Slice(type_) => {
-            write!(f, "[{}]", display_type(type_, style, bound_lifetime_depth))
+            f.write_char('[')?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)?;
+            f.write_char(']')
         }
         Type::Tuple(tuple_types) => {
-            write!(
+            f.write_char('(')?;
+
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        tuple_types
+                            .iter()
+                            .map(|type_| display_type(type_, style, bound_lifetime_depth))
+                    },
+                    ", ",
+                ),
                 f,
-                "({}",
-                fmt_tools::fmt_separated_display_list(
-                    || tuple_types
-                        .iter()
-                        .map(|type_| { display_type(type_, style, bound_lifetime_depth) }),
-                    ", "
-                )
             )?;
 
             if tuple_types.len() == 1 {
@@ -189,34 +212,40 @@ pub fn display_type<'a>(type_: &'a Type, style: Style, bound_lifetime_depth: u64
             f.write_char('&')?;
 
             if *lifetime != 0 {
-                write!(f, "{} ", display_lifetime(*lifetime, bound_lifetime_depth))?;
+                Display::fmt(&display_lifetime(*lifetime, bound_lifetime_depth), f)?;
+                f.write_char(' ')?;
             }
 
-            display_type(type_, style, bound_lifetime_depth).fmt(f)
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)
         }
         Type::RefMut { lifetime, type_ } => {
             f.write_char('&')?;
 
             if *lifetime != 0 {
-                write!(f, "{} ", display_lifetime(*lifetime, bound_lifetime_depth))?;
+                Display::fmt(&display_lifetime(*lifetime, bound_lifetime_depth), f)?;
+                f.write_char(' ')?;
             }
 
-            write!(f, "mut {}", display_type(type_, style, bound_lifetime_depth))
+            f.write_str("mut ")?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)
         }
         Type::PtrConst(type_) => {
-            write!(f, "*const {}", display_type(type_, style, bound_lifetime_depth))
+            f.write_str("*const ")?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)
         }
         Type::PtrMut(type_) => {
-            write!(f, "*mut {}", display_type(type_, style, bound_lifetime_depth))
+            f.write_str("*mut ")?;
+            Display::fmt(&display_type(type_, style, bound_lifetime_depth), f)
         }
-        Type::Fn(fn_sig) => display_fn_sig(fn_sig, style, bound_lifetime_depth).fmt(f),
+        Type::Fn(fn_sig) => Display::fmt(&display_fn_sig(fn_sig, style, bound_lifetime_depth), f),
         Type::DynTrait { dyn_bounds, lifetime } => {
-            display_dyn_bounds(dyn_bounds, style, bound_lifetime_depth).fmt(f)?;
+            Display::fmt(&display_dyn_bounds(dyn_bounds, style, bound_lifetime_depth), f)?;
 
             if *lifetime == 0 {
                 Ok(())
             } else {
-                write!(f, " + {}", display_lifetime(*lifetime, bound_lifetime_depth))
+                f.write_str(" + ")?;
+                Display::fmt(&display_lifetime(*lifetime, bound_lifetime_depth), f)
             }
         }
     })
@@ -253,7 +282,8 @@ pub fn display_basic_type(basic_type: BasicType) -> impl Display {
 pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| {
         if fn_sig.bound_lifetimes != 0 {
-            write!(f, "{} ", display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth))?;
+            Display::fmt(&display_binder(fn_sig.bound_lifetimes, bound_lifetime_depth), f)?;
+            f.write_char(' ')?;
         }
 
         let bound_lifetime_depth = bound_lifetime_depth + fn_sig.bound_lifetimes;
@@ -263,29 +293,33 @@ pub fn display_fn_sig<'a>(fn_sig: &'a FnSig, style: Style, bound_lifetime_depth:
         }
 
         if let Some(abi) = &fn_sig.abi {
-            write!(f, "extern {} ", display_abi(abi))?;
+            f.write_str("extern ")?;
+            Display::fmt(&display_abi(abi), f)?;
+            f.write_char(' ')?;
         }
 
-        write!(
+        f.write_str("fn(")?;
+
+        Display::fmt(
+            &fmt_tools::fmt_separated_display_list(
+                || {
+                    fn_sig
+                        .argument_types
+                        .iter()
+                        .map(|type_| display_type(type_, style, bound_lifetime_depth))
+                },
+                ", ",
+            ),
             f,
-            "fn({})",
-            fmt_tools::fmt_separated_display_list(
-                || fn_sig
-                    .argument_types
-                    .iter()
-                    .map(|type_| { display_type(type_, style, bound_lifetime_depth) }),
-                ", "
-            )
         )?;
+
+        f.write_char(')')?;
 
         if matches!(fn_sig.return_type.as_ref(), Type::Basic(BasicType::Unit)) {
             Ok(())
         } else {
-            write!(
-                f,
-                " -> {}",
-                display_type(&fn_sig.return_type, style, bound_lifetime_depth)
-            )
+            f.write_str(" -> ")?;
+            Display::fmt(&display_type(&fn_sig.return_type, style, bound_lifetime_depth), f)
         }
     })
 }
@@ -302,7 +336,8 @@ fn display_abi<'a>(abi: &'a Abi) -> impl Display + 'a {
                 f.write_str(iter.next().unwrap())?;
 
                 for item in iter {
-                    write!(f, "-{item}")?;
+                    f.write_char('-')?;
+                    f.write_str(item)?;
                 }
             }
         }
@@ -316,71 +351,84 @@ fn display_dyn_bounds<'a>(dyn_bounds: &'a DynBounds, style: Style, bound_lifetim
         f.write_str("dyn ")?;
 
         if dyn_bounds.bound_lifetimes != 0 {
-            write!(
-                f,
-                "{} ",
-                display_binder(dyn_bounds.bound_lifetimes, bound_lifetime_depth)
-            )?;
+            Display::fmt(&display_binder(dyn_bounds.bound_lifetimes, bound_lifetime_depth), f)?;
+            f.write_char(' ')?;
         }
 
         let bound_lifetime_depth = bound_lifetime_depth + dyn_bounds.bound_lifetimes;
 
-        fmt_tools::fmt_separated_display_list(
-            || {
-                dyn_bounds
-                    .dyn_traits
-                    .iter()
-                    .map(move |dyn_trait| display_dyn_trait(dyn_trait, style, bound_lifetime_depth))
-            },
-            " + ",
+        Display::fmt(
+            &fmt_tools::fmt_separated_display_list(
+                || {
+                    dyn_bounds
+                        .dyn_traits
+                        .iter()
+                        .map(move |dyn_trait| display_dyn_trait(dyn_trait, style, bound_lifetime_depth))
+                },
+                " + ",
+            ),
+            f,
         )
-        .fmt(f)
     })
 }
 
 fn display_dyn_trait<'a>(dyn_trait: &'a DynTrait, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| {
         if dyn_trait.dyn_trait_assoc_bindings.is_empty() {
-            display_path(&dyn_trait.path, style, bound_lifetime_depth, false).fmt(f)
+            Display::fmt(&display_path(&dyn_trait.path, style, bound_lifetime_depth, false), f)
         } else if let Path::Generic { path, generic_args } = dyn_trait.path.as_ref() {
-            write!(
-                f,
-                "{}<{}>",
-                display_path(path, style, bound_lifetime_depth, false),
-                fmt_tools::fmt_separated_display_list(
-                    || generic_args
-                        .iter()
-                        .map(Ok)
-                        .chain(dyn_trait.dyn_trait_assoc_bindings.iter().map(Err))
-                        .map(|value| {
-                            fmt_tools::fmt_fn(move |f| match value {
-                                Ok(generic_arg) => display_generic_arg(generic_arg, style, bound_lifetime_depth).fmt(f),
-                                Err(dyn_trait_assoc_binding) => display_dyn_trait_assoc_binding(
-                                    dyn_trait_assoc_binding,
-                                    style,
-                                    bound_lifetime_depth,
-                                )
-                                .fmt(f),
+            Display::fmt(&display_path(path, style, bound_lifetime_depth, false), f)?;
+            f.write_char('<')?;
+
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        generic_args
+                            .iter()
+                            .map(Ok)
+                            .chain(dyn_trait.dyn_trait_assoc_bindings.iter().map(Err))
+                            .map(|value| {
+                                fmt_tools::fmt_fn(move |f| match value {
+                                    Ok(generic_arg) => {
+                                        Display::fmt(&display_generic_arg(generic_arg, style, bound_lifetime_depth), f)
+                                    }
+                                    Err(dyn_trait_assoc_binding) => Display::fmt(
+                                        &display_dyn_trait_assoc_binding(
+                                            dyn_trait_assoc_binding,
+                                            style,
+                                            bound_lifetime_depth,
+                                        ),
+                                        f,
+                                    ),
+                                })
                             })
-                        }),
-                    ", "
-                )
-            )
-        } else {
-            write!(
+                    },
+                    ", ",
+                ),
                 f,
-                "{}<{}>",
-                display_path(&dyn_trait.path, style, bound_lifetime_depth, false),
-                fmt_tools::fmt_separated_display_list(
-                    || dyn_trait
-                        .dyn_trait_assoc_bindings
-                        .iter()
-                        .map(|dyn_trait_assoc_binding| {
-                            display_dyn_trait_assoc_binding(dyn_trait_assoc_binding, style, bound_lifetime_depth)
-                        }),
-                    ", "
-                )
-            )
+            )?;
+
+            f.write_char('>')
+        } else {
+            Display::fmt(&display_path(&dyn_trait.path, style, bound_lifetime_depth, false), f)?;
+            f.write_char('<')?;
+
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        dyn_trait
+                            .dyn_trait_assoc_bindings
+                            .iter()
+                            .map(|dyn_trait_assoc_binding| {
+                                display_dyn_trait_assoc_binding(dyn_trait_assoc_binding, style, bound_lifetime_depth)
+                            })
+                    },
+                    ", ",
+                ),
+                f,
+            )?;
+
+            f.write_char('>')
         }
     })
 }
@@ -391,22 +439,37 @@ fn display_dyn_trait_assoc_binding<'a>(
     bound_lifetime_depth: u64,
 ) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| {
-        write!(
+        f.write_str(&dyn_trait_assoc_binding.name)?;
+        f.write_str(" = ")?;
+
+        Display::fmt(
+            &display_type(&dyn_trait_assoc_binding.type_, style, bound_lifetime_depth),
             f,
-            "{} = {}",
-            dyn_trait_assoc_binding.name,
-            display_type(&dyn_trait_assoc_binding.type_, style, bound_lifetime_depth)
         )
     })
 }
 
 fn write_integer<T: Display>(f: &mut Formatter, value: T, style: Style) -> fmt::Result {
-    write!(f, "{value}")?;
+    Display::fmt(&value, f)?;
 
     if matches!(style, Style::Long) {
         f.write_str(any::type_name::<T>())
     } else {
         Ok(())
+    }
+}
+
+fn wrap_with_braces_if_needed(
+    in_value: bool,
+    formatter: &mut Formatter,
+    f: impl FnOnce(&mut Formatter) -> fmt::Result,
+) -> fmt::Result {
+    if in_value {
+        f(formatter)
+    } else {
+        formatter.write_char('{')?;
+        f(formatter)?;
+        formatter.write_char('}')
     }
 }
 
@@ -429,118 +492,116 @@ pub fn display_const<'a>(
         Const::U16(value) => write_integer(f, value, style),
         Const::I64(value) => write_integer(f, value, style),
         Const::U64(value) => write_integer(f, value, style),
-        Const::Bool(value) => write!(f, "{value}"),
-        Const::Char(value) => write!(f, "{value:?}"),
-        Const::Str(ref value) => {
-            if in_value {
-                write!(f, "*{value:?}")
-            } else {
-                write!(f, "{{*{value:?}}}")
-            }
-        }
+        Const::Bool(value) => Display::fmt(&value, f),
+        Const::Char(value) => Debug::fmt(&value, f),
+        Const::Str(ref value) => wrap_with_braces_if_needed(in_value, f, |f| {
+            f.write_char('*')?;
+            Debug::fmt(value, f)
+        }),
         Const::Ref(ref value) => {
             if let Const::Str(value) = value.as_ref() {
-                write!(f, "{value:?}")
-            } else if in_value {
-                write!(f, "&{}", display_const(value, style, bound_lifetime_depth, true))
+                Debug::fmt(value, f)
             } else {
-                write!(f, "{{&{}}}", display_const(value, style, bound_lifetime_depth, true))
+                wrap_with_braces_if_needed(in_value, f, |f| {
+                    f.write_char('&')?;
+                    Display::fmt(&display_const(value, style, bound_lifetime_depth, true), f)
+                })
             }
         }
-        Const::RefMut(ref value) => {
-            let inner = display_const(value, style, bound_lifetime_depth, true);
+        Const::RefMut(ref value) => wrap_with_braces_if_needed(in_value, f, |f| {
+            f.write_str("&mut ")?;
+            Display::fmt(&display_const(value, style, bound_lifetime_depth, true), f)
+        }),
+        Const::Array(ref items) => wrap_with_braces_if_needed(in_value, f, |f| {
+            f.write_char('[')?;
 
-            if in_value {
-                write!(f, "&mut {inner}")
-            } else {
-                write!(f, "{{&mut {inner}}}")
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        items
+                            .iter()
+                            .map(|item| display_const(item, style, bound_lifetime_depth, true))
+                    },
+                    ", ",
+                ),
+                f,
+            )?;
+
+            f.write_char(']')
+        }),
+        Const::Tuple(ref items) => wrap_with_braces_if_needed(in_value, f, |f| {
+            f.write_char('(')?;
+
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        items
+                            .iter()
+                            .map(|item| display_const(item, style, bound_lifetime_depth, true))
+                    },
+                    ", ",
+                ),
+                f,
+            )?;
+
+            if items.len() == 1 {
+                f.write_char(',')?;
             }
-        }
-        Const::Array(ref items) => {
-            let inner = fmt_tools::fmt_separated_display_list(
-                || {
-                    items
-                        .iter()
-                        .map(|item| display_const(item, style, bound_lifetime_depth, true))
-                },
-                ", ",
-            );
 
-            if in_value {
-                write!(f, "[{inner}]")
-            } else {
-                write!(f, "{{[{inner}]}}")
-            }
-        }
-        Const::Tuple(ref items) => {
-            let inner = fmt_tools::fmt_separated_display_list(
-                || {
-                    items
-                        .iter()
-                        .map(|item| display_const(item, style, bound_lifetime_depth, true))
-                },
-                ", ",
-            );
-
-            if in_value {
-                write!(f, "({inner}")?;
-
-                f.write_str(if items.len() == 1 { ",)" } else { ")" })
-            } else {
-                write!(f, "{{({inner}")?;
-
-                f.write_str(if items.len() == 1 { ",)}" } else { ")}" })
-            }
-        }
-        Const::NamedStruct { ref path, ref fields } => {
-            let path = display_path(path, style, bound_lifetime_depth, true);
-            let fields = display_const_fields(fields, style, bound_lifetime_depth);
-
-            if in_value {
-                write!(f, "{path}{fields}")
-            } else {
-                write!(f, "{{{path}{fields}}}")
-            }
-        }
-        Const::Placeholder => write!(f, "_"),
+            f.write_char(')')
+        }),
+        Const::NamedStruct { ref path, ref fields } => wrap_with_braces_if_needed(in_value, f, |f| {
+            Display::fmt(&display_path(path, style, bound_lifetime_depth, true), f)?;
+            Display::fmt(&display_const_fields(fields, style, bound_lifetime_depth), f)
+        }),
+        Const::Placeholder => f.write_char('_'),
     })
 }
 
 fn display_const_fields<'a>(fields: &'a ConstFields, style: Style, bound_lifetime_depth: u64) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| match fields {
         ConstFields::Unit => Ok(()),
-        ConstFields::Tuple(fields) => write!(
-            f,
-            "({})",
-            fmt_tools::fmt_separated_display_list(
-                || fields
-                    .iter()
-                    .map(|field| display_const(field, style, bound_lifetime_depth, true)),
-                ", "
-            )
-        ),
+        ConstFields::Tuple(fields) => {
+            f.write_char('(')?;
+
+            Display::fmt(
+                &fmt_tools::fmt_separated_display_list(
+                    || {
+                        fields
+                            .iter()
+                            .map(|field| display_const(field, style, bound_lifetime_depth, true))
+                    },
+                    ", ",
+                ),
+                f,
+            )?;
+
+            f.write_char(')')
+        }
         ConstFields::Struct(fields) => {
             if fields.is_empty() {
                 // Matches the behavior of `rustc-demangle`.
-                write!(f, " {{  }}")
+                f.write_str(" {  }")
             } else {
-                write!(
-                    f,
-                    " {{ {} }}",
-                    fmt_tools::fmt_separated_display_list(
-                        || fields.iter().map(|(name, value)| {
-                            fmt_tools::fmt_fn(move |f| {
-                                write!(
-                                    f,
-                                    "{}: {}",
-                                    name,
-                                    display_const(value, style, bound_lifetime_depth, true)
-                                )
+                f.write_str(" { ")?;
+
+                Display::fmt(
+                    &fmt_tools::fmt_separated_display_list(
+                        || {
+                            fields.iter().map(|(name, value)| {
+                                fmt_tools::fmt_fn(move |f| {
+                                    Display::fmt(name, f)?;
+                                    f.write_str(": ")?;
+                                    Display::fmt(&display_const(value, style, bound_lifetime_depth, true), f)
+                                })
                             })
-                        }),
-                        ", "
-                    )
-                )
+                        },
+                        ", ",
+                    ),
+                    f,
+                )?;
+
+                f.write_str(" }")
             }
         }
     })
