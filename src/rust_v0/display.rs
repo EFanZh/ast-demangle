@@ -21,10 +21,10 @@ pub enum Style {
 pub fn display_path<'a>(path: &'a Path, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display + 'a {
     fmt_tools::fmt_fn(move |f| match path {
         Path::CrateRoot(identifier) => match style {
-            Style::Short | Style::Normal => f.write_str(&identifier.name),
-            Style::Long => {
+            Style::Long if identifier.disambiguator != 0 => {
                 write!(f, "{}[{:x}]", identifier.name, identifier.disambiguator)
             }
+            _ => f.write_str(&identifier.name),
         },
         Path::InherentImpl { type_, .. } => {
             write!(f, "<{}>", display_type(type_, style, bound_lifetime_depth))

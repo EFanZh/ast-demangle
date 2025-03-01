@@ -1,14 +1,14 @@
-use crate::mini_parser::Parser;
 use crate::rust_v0::display::{self, Style};
-use crate::rust_v0::parsers::{Context, IndexedStr};
+use crate::rust_v0::parsers::Context;
 use crate::rust_v0::{
     Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg, Identifier, ImplPath, Path, Symbol,
     Type,
 };
+use mini_parser::Parser;
 use std::borrow::Cow;
 use std::rc::Rc;
 
-fn id(disambiguator: u64, name: &str) -> Identifier {
+const fn id(disambiguator: u64, name: &str) -> Identifier {
     Identifier {
         name: Cow::Borrowed(name),
         disambiguator,
@@ -17,12 +17,14 @@ fn id(disambiguator: u64, name: &str) -> Identifier {
 
 fn simplify_parser<'a, P, T>(mut parser: P) -> impl FnMut(&'a str) -> Result<(T, &'a str), ()>
 where
-    P: Parser<IndexedStr<'a>, Context<'a>, Output = T>,
+    P: Parser<Context<'a>, Output = T>,
 {
     move |input| {
+        let mut context = Context::new(input);
+
         parser
-            .parse(IndexedStr::new(input), &mut Context::default())
-            .map(|(result, suffix)| (result, suffix.data))
+            .parse(&mut context)
+            .map(|result| (result, &input[context.index..]))
     }
 }
 

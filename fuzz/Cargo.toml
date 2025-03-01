@@ -7,14 +7,17 @@ version = "0.0.0"
 [package.metadata]
 cargo-fuzz = true
 
-[dependencies]
-ast-demangle = { path = ".." }
-libfuzzer-sys = "0.4"
-rustc-demangle = "0.1"
-test-utilities = { path = "../test-utilities" }
-
 [[bin]]
 doc = false
 name = "rust-v0-demangle"
 path = "fuzz-targets/rust-v0-demangle.rs"
 test = false
+
+[lints]
+workspace = true
+
+[dependencies]
+ast-demangle = { path = ".." }
+libfuzzer-sys = "0.4"
+rustc-demangle = "0.1"
+test-utilities = { path = "../test-utilities" }

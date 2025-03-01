@@ -2,7 +2,7 @@
 authors = ["EFanZh <efanzh@gmail.com>"]
 categories = ["compilers"]
 description = "Parses mangled names and produces structured results."
-edition = "2021"
+edition = "2024"
 keywords = ["demangle"]
 license = "MIT"
 name = "ast-demangle"
@@ -11,6 +11,7 @@ version = "0.4.0"
 
 [dependencies]
 fmt-tools = "0.1"
+mini-parser = { path = "crates/mini-parser" }
 num-traits = "0.2"
 punycode = "0.4"
 
@@ -18,5 +19,83 @@ punycode = "0.4"
 rustc-demangle = "0.1"
 test-utilities = { path = "test-utilities" }
 
+[lints]
+workspace = true
+
 [workspace]
-members = ["fuzz", "test-utilities"]
+members = ["crates/mini-parser", "fuzz", "test-utilities"]
+
+[workspace.lints.rust]
+ambiguous-negative-literals = { level = "warn", priority = 1 }
+closure-returning-async-block = { level = "warn", priority = 1 }
+explicit-outlives-requirements = { level = "warn", priority = 1 }
+impl-trait-redundant-captures = { level = "warn", priority = 1 }
+let-underscore-drop = { level = "warn", priority = 1 }
+macro-use-extern-crate = { level = "warn", priority = 1 }
+meta-variable-misuse = { level = "warn", priority = 1 }
+missing-abi = { level = "warn", priority = 1 }
+missing-docs = { level = "warn", priority = 1 }
+redundant-imports = { level = "warn", priority = 1 }
+redundant-lifetimes = { level = "warn", priority = 1 }
+single-use-lifetimes = { level = "warn", priority = 1 }
+trivial-casts = { level = "warn", priority = 1 }
+trivial-numeric-casts = { level = "warn", priority = 1 }
+unit-bindings = { level = "warn", priority = 1 }
+unnameable-types = { level = "warn", priority = 1 }
+unsafe-code = { level = "warn", priority = 1 }
+unused-crate-dependencies = { level = "warn", priority = 1 }
+unused-extern-crates = { level = "warn", priority = 1 }
+unused-import-braces = { level = "warn", priority = 1 }
+unused-lifetimes = { level = "warn", priority = 1 }
+unused-macro-rules = { level = "warn", priority = 1 }
+unused-qualifications = { level = "warn", priority = 1 }
+variant-size-differences = { level = "warn", priority = 1 }
+
+[workspace.lints.clippy]
+alloc-instead-of-core = { level = "warn", priority = 1 }
+allow-attributes = { level = "warn", priority = 1 }
+allow-attributes-without-reason = { level = "warn", priority = 1 }
+as-conversions = { level = "warn", priority = 1 }
+assertions-on-result-states = { level = "warn", priority = 1 }
+cargo = "warn"
+cfg-not-test = { level = "warn", priority = 1 }
+clone-on-ref-ptr = { level = "warn", priority = 1 }
+dbg-macro = { level = "warn", priority = 1 }
+deref-by-slicing = { level = "warn", priority = 1 }
+empty-drop = { level = "warn", priority = 1 }
+empty-enum-variants-with-brackets = { level = "warn", priority = 1 }
+empty-structs-with-brackets = { level = "warn", priority = 1 }
+field-scoped-visibility-modifiers = { level = "warn", priority = 1 }
+format-push-string = { level = "warn", priority = 1 }
+get-unwrap = { level = "warn", priority = 1 }
+if-then-some-else-none = { level = "warn", priority = 1 }
+infinite-loop = { level = "warn", priority = 1 }
+lossy-float-literal = { level = "warn", priority = 1 }
+multiple-crate-versions = { level = "allow", priority = 1 }
+mutex-atomic = { level = "warn", priority = 1 }
+non-zero-suggestions = { level = "warn", priority = 1 }
+nursery = "warn"
+panic-in-result-fn = { level = "warn", priority = 1 }
+pedantic = "warn"
+print-stderr = { level = "warn", priority = 1 }
+print-stdout = { level = "warn", priority = 1 }
+rc-buffer = { level = "warn", priority = 1 }
+rc-mutex = { level = "warn", priority = 1 }
+redundant-type-annotations = { level = "warn", priority = 1 }
+renamed-function-params = { level = "warn", priority = 1 }
+rest-pat-in-fully-bound-structs = { level = "warn", priority = 1 }
+same-name-method = { level = "warn", priority = 1 }
+self-named-module-files = { level = "warn", priority = 1 }
+string-lit-chars-any = { level = "warn", priority = 1 }
+string-to-string = { level = "warn", priority = 1 }
+tests-outside-test-module = { level = "warn", priority = 1 }
+todo = { level = "warn", priority = 1 }
+try-err = { level = "warn", priority = 1 }
+undocumented-unsafe-blocks = { level = "warn", priority = 1 }
+unimplemented = { level = "warn", priority = 1 }
+unnecessary-safety-comment = { level = "warn", priority = 1 }
+unnecessary-safety-doc = { level = "warn", priority = 1 }
+unnecessary-self-imports = { level = "warn", priority = 1 }
+unneeded-field-pattern = { level = "warn", priority = 1 }
+unseparated-literal-suffix = { level = "warn", priority = 1 }
+verbose-file-reads = { level = "warn", priority = 1 }

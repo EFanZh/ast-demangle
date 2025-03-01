@@ -1,3 +1,5 @@
+#![expect(missing_docs, reason = "test only")]
+
 use std::fmt;
 use std::io::{self, ErrorKind};
 
@@ -7,7 +9,7 @@ pub struct BoundedWriter<T> {
 }
 
 impl<T> BoundedWriter<T> {
-    pub fn new(inner: T, capacity: usize) -> Self {
+    pub const fn new(inner: T, capacity: usize) -> Self {
         Self { inner, capacity }
     }
 

@@ -1,3 +1,11 @@
+#![expect(
+    unused_crate_dependencies,
+    clippy::tests_outside_test_module,
+    reason = "integration test"
+)]
+
+//! Integration tests for `ast-demangle` against `rustc-demangle`.
+
 use ast_demangle::rust_v0::Symbol;
 use std::fmt::Write;
 use test_utilities::BoundedWriter;
@@ -15,7 +23,7 @@ fn demangle_ast_demangle<'a>(name: &str, buffer: &'a mut String) -> Option<(&'a 
     if rest.is_empty() {
         if symbol
             .vendor_specific_suffix
-            .map_or(false, |suffix| suffix.starts_with(".llvm."))
+            .is_some_and(|suffix| suffix.starts_with(".llvm."))
         {
             symbol.vendor_specific_suffix = None;
         }
