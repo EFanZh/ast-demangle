@@ -14,7 +14,7 @@ pub struct ParseSymbolError;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Symbol<'a> {
-    pub version: Option<u64>,
+    pub encoding_version: Option<u64>,
     pub path: Rc<Path<'a>>,
     pub instantiating_crate: Option<Rc<Path<'a>>>,
     pub vendor_specific_suffix: Option<&'a str>,
@@ -23,7 +23,7 @@ pub struct Symbol<'a> {
 impl<'a> Symbol<'a> {
     /// Returns an object that implements [`Display`] for printing the symbol.
     #[must_use]
-    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display {
         display::display_path(&self.path, style, 0, true)
     }
 
@@ -62,16 +62,16 @@ pub enum Path<'a> {
     CrateRoot(Identifier<'a>),
     InherentImpl {
         impl_path: ImplPath<'a>,
-        type_: Rc<Type<'a>>,
+        r#type: Rc<Type<'a>>,
     },
     TraitImpl {
         impl_path: ImplPath<'a>,
-        type_: Rc<Type<'a>>,
-        trait_: Rc<Path<'a>>,
+        r#type: Rc<Type<'a>>,
+        r#trait: Rc<Path<'a>>,
     },
     TraitDefinition {
-        type_: Rc<Type<'a>>,
-        trait_: Rc<Path<'a>>,
+        r#type: Rc<Type<'a>>,
+        r#trait: Rc<Path<'a>>,
     },
     Nested {
         namespace: u8,
@@ -97,25 +97,25 @@ impl Debug for Path<'_> {
 
         match self {
             Self::CrateRoot(identifier) => f.debug_tuple("CrateRoot").field(identifier).finish(),
-            Self::InherentImpl { impl_path, type_ } => f
+            Self::InherentImpl { impl_path, r#type } => f
                 .debug_struct("InherentImpl")
                 .field("impl_path", impl_path)
-                .field("type_", type_.as_ref())
+                .field("type", r#type.as_ref())
                 .finish(),
             Self::TraitImpl {
                 impl_path,
-                type_,
-                trait_,
+                r#type,
+                r#trait,
             } => f
                 .debug_struct("TraitImpl")
                 .field("impl_path", impl_path)
-                .field("type_", type_.as_ref())
-                .field("trait_", trait_.as_ref())
+                .field("type", r#type.as_ref())
+                .field("trait", r#trait.as_ref())
                 .finish(),
-            Self::TraitDefinition { type_, trait_ } => f
+            Self::TraitDefinition { r#type, r#trait } => f
                 .debug_struct("TraitDefinition")
-                .field("type_", type_.as_ref())
-                .field("trait_", trait_.as_ref())
+                .field("type", r#type.as_ref())
+                .field("trait", r#trait.as_ref())
                 .finish(),
             Self::Nested {
                 namespace,
@@ -139,7 +139,7 @@ impl Debug for Path<'_> {
 impl Path<'_> {
     /// Returns an object that implements [`Display`] for printing the path.
     #[must_use]
-    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display {
         display::display_path(self, style, 0, false)
     }
 }
@@ -170,7 +170,7 @@ pub struct Identifier<'a> {
 impl Identifier<'_> {
     /// Returns an object that implements [`Display`] for printing the identifier.
     #[must_use]
-    pub fn display(&self) -> impl Display + '_ {
+    pub fn display(&self) -> impl Display {
         self.name.as_ref()
     }
 }
@@ -191,7 +191,7 @@ pub enum GenericArg<'a> {
 impl GenericArg<'_> {
     /// Returns an object that implements [`Display`] for printing the generic argument.
     #[must_use]
-    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display {
         display::display_generic_arg(self, style, 0)
     }
 }
@@ -214,8 +214,8 @@ pub enum Type<'a> {
     Array(Rc<Type<'a>>, Rc<Const<'a>>),
     Slice(Rc<Type<'a>>),
     Tuple(Vec<Rc<Type<'a>>>),
-    Ref { lifetime: u64, type_: Rc<Type<'a>> },
-    RefMut { lifetime: u64, type_: Rc<Type<'a>> },
+    Ref { lifetime: u64, r#type: Rc<Type<'a>> },
+    RefMut { lifetime: u64, r#type: Rc<Type<'a>> },
     PtrConst(Rc<Type<'a>>),
     PtrMut(Rc<Type<'a>>),
     Fn(FnSig<'a>),
@@ -225,7 +225,7 @@ pub enum Type<'a> {
 impl Type<'_> {
     /// Returns an object that implements [`Display`] for printing the type.
     #[must_use]
-    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display {
         display::display_type(self, style, 0)
     }
 }
@@ -292,7 +292,7 @@ pub struct FnSig<'a> {
 impl FnSig<'_> {
     /// Returns an object that implements [`Display`] for printing the function signature.
     #[must_use]
-    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display {
         display::display_fn_sig(self, style, 0)
     }
 }
@@ -323,13 +323,7 @@ pub struct DynBounds<'a> {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynTrait<'a> {
     pub path: Rc<Path<'a>>,
-    pub dyn_trait_assoc_bindings: Vec<DynTraitAssocBinding<'a>>,
-}
-
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct DynTraitAssocBinding<'a> {
-    pub name: Cow<'a, str>,
-    pub type_: Rc<Type<'a>>,
+    pub dyn_trait_assoc_bindings: Vec<(Cow<'a, str>, Rc<Type<'a>>)>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -370,7 +364,7 @@ pub enum ConstFields<'a> {
 impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.
     #[must_use]
-    pub fn display(&self, style: DisplayStyle) -> impl Display + '_ {
+    pub fn display(&self, style: DisplayStyle) -> impl Display {
         display::display_const(self, style, 0, true)
     }
 }

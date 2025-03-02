@@ -1,6 +1,6 @@
 use crate::rust_v0::{
-    Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, DynTraitAssocBinding, FnSig, GenericArg, Identifier,
-    ImplPath, Path, Symbol, Type,
+    Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, FnSig, GenericArg, Identifier, ImplPath, Path, Symbol,
+    Type,
 };
 use mini_parser::combinators::{alt, delimited, or, preceded, terminated, tuple};
 use mini_parser::{Cursor, Parser, ParserExt};
@@ -66,7 +66,7 @@ fn digit1<'a>(context: &mut Context<'a>) -> Result<&'a str, ()> {
     }
 }
 
-fn tag<'a, 'b>(c: &'b str) -> impl Parser<Context<'a>, Output = &'a str> + 'b {
+fn tag<'a>(c: &str) -> impl Parser<Context<'a>, Output = &'a str> {
     move |context: &mut Context<'a>| -> Result<&'a str, ()> {
         context
             .index
@@ -198,12 +198,14 @@ fn parse_symbol_inner<'a>(context: &mut Context<'a>) -> Result<Symbol<'a>, ()> {
         parse_path.opt(),
         parse_vendor_specific_suffix.opt(),
     ))
-    .map(|(version, path, instantiating_crate, vendor_specific_suffix)| Symbol {
-        version,
-        path,
-        instantiating_crate,
-        vendor_specific_suffix,
-    })
+    .map(
+        |(encoding_version, path, instantiating_crate, vendor_specific_suffix)| Symbol {
+            encoding_version,
+            path,
+            instantiating_crate,
+            vendor_specific_suffix,
+        },
+    )
     .parse(context)
 }
 
@@ -213,16 +215,16 @@ fn parse_path<'a>(context: &mut Context<'a>) -> Result<Rc<Path<'a>>, ()> {
         alt((
             preceded(token(b'C'), parse_identifier).map(Path::CrateRoot),
             preceded(token(b'M'), tuple((parse_impl_path, parse_type)))
-                .map(|(impl_path, type_)| Path::InherentImpl { impl_path, type_ }),
+                .map(|(impl_path, r#type)| Path::InherentImpl { impl_path, r#type }),
             preceded(token(b'X'), tuple((parse_impl_path, parse_type, parse_path))).map(
-                |(impl_path, type_, trait_)| Path::TraitImpl {
+                |(impl_path, r#type, r#trait)| Path::TraitImpl {
                     impl_path,
-                    type_,
-                    trait_,
+                    r#type,
+                    r#trait,
                 },
             ),
             preceded(token(b'Y'), tuple((parse_type, parse_path)))
-                .map(|(type_, trait_)| Path::TraitDefinition { type_, trait_ }),
+                .map(|(r#type, r#trait)| Path::TraitDefinition { r#type, r#trait }),
             preceded(token(b'N'), tuple((take(1), parse_path, parse_identifier))).map_opt(
                 |_: &mut _, (namespace, path, identifier): (&str, _, _)| {
                     namespace.as_bytes()[0].is_ascii_alphabetic().then(|| Path::Nested {
@@ -313,19 +315,19 @@ fn parse_type<'a>(context: &mut Context<'a>) -> Result<Rc<Type<'a>>, ()> {
         alt((
             parse_basic_type.map(Type::Basic),
             parse_path.map(Type::Named),
-            preceded(token(b'A'), tuple((parse_type, parse_const))).map(|(type_, length)| Type::Array(type_, length)),
+            preceded(token(b'A'), tuple((parse_type, parse_const))).map(|(r#type, length)| Type::Array(r#type, length)),
             preceded(token(b'S'), parse_type).map(Type::Slice),
             delimited(token(b'T'), parse_type.many0(), token(b'E')).map(Type::Tuple),
             preceded(
                 token(b'R'),
                 tuple((parse_lifetime.opt().map(Option::unwrap_or_default), parse_type)),
             )
-            .map(|(lifetime, type_)| Type::Ref { lifetime, type_ }),
+            .map(|(lifetime, r#type)| Type::Ref { lifetime, r#type }),
             preceded(
                 token(b'Q'),
                 tuple((parse_lifetime.opt().map(Option::unwrap_or_default), parse_type)),
             )
-            .map(|(lifetime, type_)| Type::RefMut { lifetime, type_ }),
+            .map(|(lifetime, r#type)| Type::RefMut { lifetime, r#type }),
             preceded(token(b'P'), parse_type).map(Type::PtrConst),
             preceded(token(b'O'), parse_type).map(Type::PtrMut),
             preceded(token(b'F'), parse_fn_sig).map(Type::Fn),
@@ -417,10 +419,8 @@ fn parse_dyn_trait<'a>(context: &mut Context<'a>) -> Result<DynTrait<'a>, ()> {
         .parse(context)
 }
 
-fn parse_dyn_trait_assoc_binding<'a>(context: &mut Context<'a>) -> Result<DynTraitAssocBinding<'a>, ()> {
-    preceded(token(b'p'), tuple((parse_undisambiguated_identifier, parse_type)))
-        .map(|(name, type_)| DynTraitAssocBinding { name, type_ })
-        .parse(context)
+fn parse_dyn_trait_assoc_binding<'a>(context: &mut Context<'a>) -> Result<(Cow<'a, str>, Rc<Type<'a>>), ()> {
+    preceded(token(b'p'), tuple((parse_undisambiguated_identifier, parse_type))).parse(context)
 }
 
 fn parse_const<'a>(context: &mut Context<'a>) -> Result<Rc<Const<'a>>, ()> {

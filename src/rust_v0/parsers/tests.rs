@@ -1,8 +1,7 @@
 use crate::rust_v0::display::{self, Style};
 use crate::rust_v0::parsers::Context;
 use crate::rust_v0::{
-    Abi, BasicType, Const, DynBounds, DynTrait, DynTraitAssocBinding, GenericArg, Identifier, ImplPath, Path, Symbol,
-    Type,
+    Abi, BasicType, Const, DynBounds, DynTrait, GenericArg, Identifier, ImplPath, Path, Symbol, Type,
 };
 use mini_parser::Parser;
 use std::borrow::Cow;
@@ -195,7 +194,7 @@ fn test_rustc_demangle_crate_with_leading_digit() {
         parse_symbol("NvC6_123foo3bar"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: b'v',
                     path: Path::CrateRoot(id(0, "123foo")).into(),
@@ -219,7 +218,7 @@ fn test_rustc_demangle_utf8_idents() {
         parse_symbol("NqCs4fqI2P2rA04_11utf8_identsu30____7hkackfecea1cbdathfdh9hlq6y"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: b'q',
                     path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "utf8_idents")).into(),
@@ -240,7 +239,7 @@ fn test_rustc_demangle_closure_1() {
         parse_symbol("NCNCNgCs6DXkGYLi8lr_2cc5spawn00B5_"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: b'C',
                     path: Path::Nested {
@@ -284,7 +283,7 @@ fn test_rustc_demangle_closure_2() {
         ),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: b'C',
                     path: Path::Generic {
@@ -295,7 +294,7 @@ fn test_rustc_demangle_closure_2() {
                                     path: Rc::clone(&core_slice),
                                     disambiguator: 131,
                                 },
-                                type_: Type::Named(
+                                r#type: Type::Named(
                                     Path::Generic {
                                         path: Path::Nested {
                                             namespace: b'y',
@@ -308,7 +307,7 @@ fn test_rustc_demangle_closure_2() {
                                     .into()
                                 )
                                 .into(),
-                                trait_: Path::Nested {
+                                r#trait: Path::Nested {
                                     namespace: b'u',
                                     path: Path::Nested {
                                         namespace: b'g',
@@ -369,7 +368,7 @@ fn test_rustc_demangle_dyn_trait() {
         parse_symbol("INbNbCskIICzLVDPPb_5alloc5alloc8box_freeDINbNiB4_5boxed5FnBoxuEp6OutputuEL_ECs1iopQbuBiw2_3std"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Generic {
                     path: Path::Nested {
                         namespace: b'b',
@@ -402,10 +401,10 @@ fn test_rustc_demangle_dyn_trait() {
                                         generic_args: vec![GenericArg::Type(Type::Basic(BasicType::Unit).into())]
                                     }
                                     .into(),
-                                    dyn_trait_assoc_bindings: vec![DynTraitAssocBinding {
-                                        name: Cow::Borrowed("Output"),
-                                        type_: Type::Basic(BasicType::Unit).into()
-                                    }]
+                                    dyn_trait_assoc_bindings: vec![(
+                                        Cow::Borrowed("Output"),
+                                        Type::Basic(BasicType::Unit).into()
+                                    )]
                                 }]
                             },
                             lifetime: 0
@@ -428,7 +427,7 @@ fn test_rustc_demangle_const_generics_usize_123() {
         parse_symbol("INtC8arrayvec8ArrayVechKj7b_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Generic {
                     path: Path::Nested {
                         namespace: b't',
@@ -456,13 +455,13 @@ fn test_rustc_demangle_const_generics_u8_11() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_8UnsignedKhb_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -491,13 +490,13 @@ fn test_rustc_demangle_const_generics_i16_152() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_6SignedKs98_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -526,13 +525,13 @@ fn test_rustc_demangle_const_generics_i8_negative_11() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_6SignedKanb_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -561,13 +560,13 @@ fn test_rustc_demangle_const_generics_bool_false() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4BoolKb0_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -596,13 +595,13 @@ fn test_rustc_demangle_const_generics_bool_true() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4BoolKb1_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -631,13 +630,13 @@ fn test_rustc_demangle_const_generics_char_v() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4CharKc76_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -666,13 +665,13 @@ fn test_rustc_demangle_const_generics_char_lf() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4CharKca_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -701,13 +700,13 @@ fn test_rustc_demangle_const_generics_char_partial_differential() {
         parse_symbol("MCs4fqI2P2rA04_13const_genericINtB0_4CharKc2202_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                         disambiguator: 0,
                     },
-                    type_: Type::Named(
+                    r#type: Type::Named(
                         Path::Generic {
                             path: Path::Nested {
                                 namespace: b't',
@@ -736,7 +735,7 @@ fn test_rustc_demangle_const_generics_placeholder() {
         parse_symbol("NvNvMCs4fqI2P2rA04_13const_genericINtB4_3FooKpE3foo3FOO"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: b'v',
                     path: Path::Nested {
@@ -746,7 +745,7 @@ fn test_rustc_demangle_const_generics_placeholder() {
                                 path: Path::CrateRoot(id(0x_317d_4810_89b8_c8fe, "const_generic")).into(),
                                 disambiguator: 0,
                             },
-                            type_: Type::Named(
+                            r#type: Type::Named(
                                 Path::Generic {
                                     path: Path::Nested {
                                         namespace: b't',
@@ -789,13 +788,13 @@ fn test_rustc_demangle_exponential_explosion() {
         parse_symbol("MC0TTTTTTpB8_EB7_EB6_EB5_EB4_EB3_E"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::InherentImpl {
                     impl_path: ImplPath {
                         path: Path::CrateRoot(id(0, "")).into(),
                         disambiguator: 0,
                     },
-                    type_: tuple
+                    r#type: tuple
                 }
                 .into(),
                 instantiating_crate: None,
@@ -812,7 +811,7 @@ fn test_rustc_demangle_thinlto() {
         parse_symbol("C3foo.llvm.9D1C9369"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::CrateRoot(id(0, "foo")).into(),
                 instantiating_crate: None,
                 vendor_specific_suffix: Some(".llvm.9D1C9369"),
@@ -825,7 +824,7 @@ fn test_rustc_demangle_thinlto() {
         parse_symbol("C3foo.llvm.9D1C9369@@16"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::CrateRoot(id(0, "foo")).into(),
                 instantiating_crate: None,
                 vendor_specific_suffix: Some(".llvm.9D1C9369@@16"),
@@ -838,7 +837,7 @@ fn test_rustc_demangle_thinlto() {
         parse_symbol("NvC9backtrace3foo.llvm.A5310EB9"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: b'v',
                     path: Path::CrateRoot(id(0, "backtrace")).into(),
@@ -859,7 +858,7 @@ fn test_rustc_demangle_extra_suffix() {
         parse_symbol("NvNtNtNtNtCs92dm3009vxr_4rand4rngs7adapter9reseeding4fork23FORK_HANDLER_REGISTERED.0.0"),
         Ok((
             Symbol {
-                version: None,
+                encoding_version: None,
                 path: Path::Nested {
                     namespace: 118,
                     path: Path::Nested {

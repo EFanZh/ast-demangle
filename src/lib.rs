@@ -37,7 +37,7 @@
 //! assert_eq!(
 //!     symbol,
 //!     Symbol {
-//!         version: None,
+//!         encoding_version: None,
 //!         path: Path::Nested {
 //!             namespace: b'v',
 //!             path: Path::Nested {
