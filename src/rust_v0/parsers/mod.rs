@@ -163,10 +163,10 @@ pub trait Builder<'a>: 'a {
     // Back reference cache.
 
     fn query_const(&mut self, index: usize) -> Option<Self::Const>;
-    fn query_path(&mut self, index: usize) -> Option<Self::Path>;
-    fn query_type(&mut self, index: usize) -> Option<Self::Type>;
     fn save_const(&mut self, index: usize, value: &Self::Const);
+    fn query_path(&mut self, index: usize) -> Option<Self::Path>;
     fn save_path(&mut self, index: usize, value: &Self::Path);
+    fn query_type(&mut self, index: usize) -> Option<Self::Type>;
     fn save_type(&mut self, index: usize, value: &Self::Type);
 }
 

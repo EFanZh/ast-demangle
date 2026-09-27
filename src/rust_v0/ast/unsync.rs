@@ -327,10 +327,6 @@ impl<'a> parsers::Builder<'a> for Builder<'a> {
         }
     }
 
-    fn make_identifier(&mut self, disambiguator: u64, name: Cow<'a, str>) -> Self::Identifier {
-        Identifier { disambiguator, name }
-    }
-
     fn make_crate_root_path(&mut self, identifier: Self::Identifier) -> Self::Path {
         Rc::new(Path::CrateRoot(identifier))
     }
@@ -370,6 +366,10 @@ impl<'a> parsers::Builder<'a> for Builder<'a> {
 
     fn make_impl_path(&mut self, disambiguator: u64, path: Self::Path) -> Self::ImplPath {
         ImplPath { disambiguator, path }
+    }
+
+    fn make_identifier(&mut self, disambiguator: u64, name: Cow<'a, str>) -> Self::Identifier {
+        Identifier { disambiguator, name }
     }
 
     fn make_lifetime_generic_arg(&mut self, lifetime: u64) -> Self::GenericArg {
