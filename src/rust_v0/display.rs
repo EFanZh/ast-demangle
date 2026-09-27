@@ -1,6 +1,8 @@
 //! Pretty printing demangled symbol names.
 
-use crate::rust_v0::{Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, FnSig, GenericArg, Path, Type};
+use crate::rust_v0::ast::unsync::{
+    Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, FnSig, GenericArg, Path, Type,
+};
 use std::any;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, LowerHex, Write};
@@ -597,7 +599,7 @@ fn display_const_fields(fields: &ConstFields, style: Style, bound_lifetime_depth
 #[cfg(test)]
 mod tests {
     use super::Style;
-    use crate::rust_v0::Symbol;
+    use crate::rust_v0::ast::unsync::Symbol;
     use std::fmt::Write;
 
     #[test]

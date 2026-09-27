@@ -1,4 +1,4 @@
-use crate::rust_v0::{
+use crate::rust_v0::ast::unsync::{
     Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, FnSig, GenericArg, Identifier, ImplPath, Path, Symbol,
     Type,
 };

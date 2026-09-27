@@ -1,8 +1,8 @@
-use crate::rust_v0::display::{self, Style};
-use crate::rust_v0::parsers::Context;
-use crate::rust_v0::{
+use crate::rust_v0::ast::unsync::{
     Abi, BasicType, Const, DynBounds, DynTrait, GenericArg, Identifier, ImplPath, Path, Symbol, Type,
 };
+use crate::rust_v0::display::{self, Style};
+use crate::rust_v0::parsers::Context;
 use mini_parser::Parser;
 use std::borrow::Cow;
 use std::rc::Rc;

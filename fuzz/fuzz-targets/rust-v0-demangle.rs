@@ -2,7 +2,7 @@
 
 #![no_main]
 
-use ast_demangle::rust_v0::Symbol;
+use ast_demangle::rust_v0::ast::unsync::Symbol;
 use std::io::{self, Sink, Write};
 use test_utilities::BoundedWriter;
 
