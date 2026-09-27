@@ -1,8 +1,7 @@
 //! Pretty printing demangled symbol names.
 
-use crate::rust_v0::ast::unsync::{
-    Abi, BasicType, Const, ConstFields, DynBounds, DynTrait, FnSig, GenericArg, Path, Type,
-};
+use crate::rust_v0::ast::unsync::{Const, ConstFields, DynBounds, DynTrait, FnSig, GenericArg, Path, Type};
+use crate::rust_v0::ast::{Abi, BasicType};
 use std::any;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, LowerHex, Write};

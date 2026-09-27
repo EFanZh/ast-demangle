@@ -1,6 +1,5 @@
-use crate::rust_v0::ast::unsync::{
-    Abi, BasicType, Const, DynBounds, DynTrait, GenericArg, Identifier, ImplPath, Path, Symbol, Type,
-};
+use crate::rust_v0::ast::unsync::{Builder, Const, DynBounds, DynTrait, GenericArg, ImplPath, Path, Symbol, Type};
+use crate::rust_v0::ast::{Abi, BasicType, Identifier};
 use crate::rust_v0::display::{self, Style};
 use crate::rust_v0::parsers::Context;
 use mini_parser::Parser;
@@ -16,10 +15,10 @@ const fn id(disambiguator: u64, name: &str) -> Identifier<'_> {
 
 fn simplify_parser<'a, P, T>(mut parser: P) -> impl FnMut(&'a str) -> Result<(T, &'a str), ()>
 where
-    P: Parser<Context<'a>, Output = T>,
+    P: Parser<Context<'a, Builder<'a>>, Output = T>,
 {
     move |input| {
-        let mut context = Context::new(input);
+        let mut context = Context::new(input, Builder::default());
 
         parser
             .parse(&mut context)
@@ -185,7 +184,7 @@ fn test_parse_decimal_number() {
 }
 
 fn parse_symbol(input: &str) -> Result<(Symbol<'_>, &str), ()> {
-    super::parse_symbol(input)
+    super::parse_symbol(input, Builder::default())
 }
 
 #[test]

@@ -69,7 +69,7 @@ where
     fn map<F, T>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
-        F: FnMut(Self::Output) -> T,
+        F: FnMut(&mut C, Self::Output) -> T,
     {
         combinators::map(self, f)
     }

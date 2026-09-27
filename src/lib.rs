@@ -7,7 +7,8 @@
 //! Example:
 //!
 //! ```rust
-//! use ast_demangle::rust_v0::{DisplayStyle, Identifier, Path, Symbol};
+//! use ast_demangle::rust_v0::DisplayStyle;
+//! use ast_demangle::rust_v0::ast::unsync::{Identifier, Path, Symbol};
 //! use std::borrow::Cow;
 //!
 //! let mangled_name = "_RNvNtCs6GSVXm7oiwY_5regex4utf811decode_utf8.llvm.1119170478327948870";
