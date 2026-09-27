@@ -13,7 +13,7 @@ impl<T> BoundedWriter<T> {
         Self { inner, capacity }
     }
 
-    pub fn inner(&mut self) -> &mut T {
+    pub const fn inner(&mut self) -> &mut T {
         &mut self.inner
     }
 

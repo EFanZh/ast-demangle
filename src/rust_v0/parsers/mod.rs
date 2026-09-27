@@ -185,7 +185,7 @@ where
 // - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_symbol_mangling/src/v0.rs>.
 // - <https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html>.
 
-pub fn parse_symbol(input: &str) -> Result<(Symbol, &str), ()> {
+pub fn parse_symbol(input: &str) -> Result<(Symbol<'_>, &str), ()> {
     let mut context = Context::new(input);
 
     parse_symbol_inner(&mut context).map(|symbol| (symbol, &input[context.index..]))
@@ -505,7 +505,7 @@ fn parse_const_str(context: &mut Context) -> Result<String, ()> {
 
     terminated(lower_hex_digit0, token(b'_'))
         .map_opt(|_: &mut _, s: &str| {
-            if s.len() % 2 == 0 {
+            if s.len().is_multiple_of(2) {
                 if let Some(s2) = s.as_bytes().get(1..) {
                     let mut bytes = Vec::with_capacity(s.len() / 2);
 

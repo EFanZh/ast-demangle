@@ -7,7 +7,7 @@ use mini_parser::Parser;
 use std::borrow::Cow;
 use std::rc::Rc;
 
-const fn id(disambiguator: u64, name: &str) -> Identifier {
+const fn id(disambiguator: u64, name: &str) -> Identifier<'_> {
     Identifier {
         name: Cow::Borrowed(name),
         disambiguator,
@@ -184,7 +184,7 @@ fn test_parse_decimal_number() {
     assert_eq!(parse("999999999999999999999999"), Err(()));
 }
 
-fn parse_symbol(input: &str) -> Result<(Symbol, &str), ()> {
+fn parse_symbol(input: &str) -> Result<(Symbol<'_>, &str), ()> {
     super::parse_symbol(input)
 }
 

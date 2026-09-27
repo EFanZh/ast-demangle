@@ -12,7 +12,7 @@ use test_utilities::BoundedWriter;
 
 const TEST_DATA: &str = include_str!("test-against-rustc-demangle-data.txt");
 
-fn bounded_writer(buffer: &mut String) -> BoundedWriter<&mut String> {
+const fn bounded_writer(buffer: &mut String) -> BoundedWriter<&mut String> {
     BoundedWriter::new(buffer, 65536)
 }
 
