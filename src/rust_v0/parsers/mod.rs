@@ -62,7 +62,7 @@ pub trait Builder<'a>: 'a {
 
     fn make_lifetime_generic_arg(&mut self, lifetime: u64) -> Self::GenericArg;
     fn make_type_generic_arg(&mut self, r#type: Self::Type) -> Self::GenericArg;
-    fn make_const_generic_arg(&mut self, r#const: Self::Const) -> Self::GenericArg;
+    fn make_const_generic_arg(&mut self, value: Self::Const) -> Self::GenericArg;
 
     // Type constructors.
 
@@ -513,7 +513,7 @@ where
     alt((
         parse_lifetime::<B>.map(|context, lifetime| context.builder.make_lifetime_generic_arg(lifetime)),
         parse_type::<B>.map(|context, r#type| context.builder.make_type_generic_arg(r#type)),
-        preceded(token::<B>(b'K'), parse_const).map(|context, r#const| context.builder.make_const_generic_arg(r#const)),
+        preceded(token::<B>(b'K'), parse_const).map(|context, value| context.builder.make_const_generic_arg(value)),
     ))
     .parse(context)
 }

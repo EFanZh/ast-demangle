@@ -144,7 +144,7 @@ pub fn display_generic_arg(generic_arg: &GenericArg, style: Style, bound_lifetim
     fmt_tools::fmt_fn(move |f| match generic_arg {
         GenericArg::Lifetime(lifetime) => display_lifetime(*lifetime, bound_lifetime_depth).fmt(f),
         GenericArg::Type(r#type) => display_type(r#type, style, bound_lifetime_depth).fmt(f),
-        GenericArg::Const(r#const) => display_const(r#const, style, bound_lifetime_depth, false).fmt(f),
+        GenericArg::Const(value) => display_const(value, style, bound_lifetime_depth, false).fmt(f),
     })
 }
 
@@ -466,8 +466,8 @@ fn wrap_with_braces_if_needed(
     }
 }
 
-pub fn display_const(r#const: &Const, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display {
-    fmt_tools::fmt_fn(move |f| match *r#const {
+pub fn display_const(value: &Const, style: Style, bound_lifetime_depth: u64, in_value: bool) -> impl Display {
+    fmt_tools::fmt_fn(move |f| match *value {
         Const::I8(value) => write_integer(f, value, style),
         Const::U8(value) => write_integer(f, value, style),
         Const::Isize(value) => write_integer(f, value, style),

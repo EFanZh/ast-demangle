@@ -1,6 +1,6 @@
 //! AST nodes using `Rc` for shared nodes.
 
-use crate::rust_v0::ast::{Abi, BasicType, Identifier};
+use crate::rust_v0::ast::{Abi, BasicType, Identifier, traits};
 use crate::rust_v0::display::{self, Style};
 use crate::rust_v0::parsers;
 use std::borrow::Cow;
@@ -52,6 +52,26 @@ impl Display for Symbol<'_> {
     }
 }
 
+impl<'a> traits::Symbol for Symbol<'a> {
+    type Path = Path<'a>;
+
+    fn encoding_version(&self) -> Option<u64> {
+        self.encoding_version
+    }
+
+    fn path(&self) -> &Self::Path {
+        &self.path
+    }
+
+    fn instantiating_crate(&self) -> Option<&Self::Path> {
+        self.instantiating_crate.as_deref()
+    }
+
+    fn vendor_specific_suffix(&self) -> Option<&str> {
+        self.vendor_specific_suffix
+    }
+}
+
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Path<'a> {
     CrateRoot(Identifier<'a>),
@@ -77,6 +97,14 @@ pub enum Path<'a> {
         path: Rc<Self>,
         generic_args: Vec<GenericArg<'a>>,
     },
+}
+
+impl Path<'_> {
+    /// Returns an object that implements [`Display`] for printing the path.
+    #[must_use]
+    pub fn display(&self, style: Style) -> impl Display {
+        display::display_path(self, style, 0, false)
+    }
 }
 
 impl Debug for Path<'_> {
@@ -131,14 +159,6 @@ impl Debug for Path<'_> {
     }
 }
 
-impl Path<'_> {
-    /// Returns an object that implements [`Display`] for printing the path.
-    #[must_use]
-    pub fn display(&self, style: Style) -> impl Display {
-        display::display_path(self, style, 0, false)
-    }
-}
-
 impl Display for Path<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
@@ -146,10 +166,51 @@ impl Display for Path<'_> {
     }
 }
 
+impl<'a> traits::Path for Path<'a> {
+    type ImplPath = ImplPath<'a>;
+    type Identifier = Identifier<'a>;
+    type GenericArg = GenericArg<'a>;
+    type Type = Type<'a>;
+
+    fn visit<'b, 'c, V>(&'b self, visitor: &'c mut V) -> V::Result<'c>
+    where
+        V: traits::PathVisitor<'b, Self, Self::ImplPath, Self::Identifier, Self::GenericArg, Self::Type> + ?Sized,
+    {
+        match self {
+            Path::CrateRoot(identifier) => visitor.visit_crate_root(identifier),
+            Path::InherentImpl { impl_path, r#type } => visitor.visit_inherent_impl(impl_path, r#type),
+            Path::TraitImpl {
+                impl_path,
+                r#type,
+                r#trait,
+            } => visitor.visit_trait_impl(impl_path, r#type, r#trait),
+            Path::TraitDefinition { r#type, r#trait } => visitor.visit_trait_definition(r#type, r#trait),
+            Path::Nested {
+                namespace,
+                path,
+                identifier,
+            } => visitor.visit_nested(*namespace, path, identifier),
+            Path::Generic { path, generic_args } => visitor.visit_generic(path, generic_args),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ImplPath<'a> {
     pub disambiguator: u64,
     pub path: Rc<Path<'a>>,
+}
+
+impl<'a> traits::ImplPath for ImplPath<'a> {
+    type Path = Path<'a>;
+
+    fn disambiguator(&self) -> u64 {
+        self.disambiguator
+    }
+
+    fn path(&self) -> &Self::Path {
+        &self.path
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -171,6 +232,23 @@ impl Display for GenericArg<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
+    }
+}
+
+impl<'a> traits::GenericArg for GenericArg<'a> {
+    type Type = Type<'a>;
+    type Const = Const<'a>;
+
+    fn visit<'b, 'c, V>(&'b self, visitor: &'c mut V) -> V::Result<'c>
+    where
+        V: traits::GenericArgVisitor<'b, <Self as traits::GenericArg>::Type, <Self as traits::GenericArg>::Const>
+            + ?Sized,
+    {
+        match self {
+            GenericArg::Lifetime(lifetime) => visitor.visit_lifetime(*lifetime),
+            GenericArg::Type(r#type) => visitor.visit_type(r#type),
+            GenericArg::Const(value) => visitor.visit_const(value),
+        }
     }
 }
 
@@ -204,6 +282,34 @@ impl Display for Type<'_> {
     }
 }
 
+impl<'a> traits::Type for Type<'a> {
+    type Path = Path<'a>;
+    type BasicType = BasicType;
+    type FnSig = FnSig<'a>;
+    type DynBounds = DynBounds<'a>;
+    type Const = Const<'a>;
+
+    fn visit<'b, 'c, V>(&'b self, visitor: &'c mut V) -> V::Result<'c>
+    where
+        V: traits::TypeVisitor<'b, Self::Path, Self, Self::BasicType, Self::FnSig, Self::DynBounds, Self::Const>
+            + ?Sized,
+    {
+        match self {
+            Type::Basic(basic_type) => visitor.visit_basic(basic_type),
+            Type::Named(path) => visitor.visit_named(path),
+            Type::Array(r#type, length) => visitor.visit_array(r#type, length),
+            Type::Slice(r#type) => visitor.visit_slice(r#type),
+            Type::Tuple(types) => visitor.visit_tuple(types.iter().map(Rc::as_ref)),
+            Type::Ref { lifetime, r#type } => visitor.visit_ref(*lifetime, r#type),
+            Type::RefMut { lifetime, r#type } => visitor.visit_ref_mut(*lifetime, r#type),
+            Type::PtrConst(r#type) => visitor.visit_ptr_const(r#type),
+            Type::PtrMut(r#type) => visitor.visit_ptr_mut(r#type),
+            Type::Fn(fn_sig) => visitor.visit_fn(fn_sig),
+            Type::DynTrait { dyn_bounds, lifetime } => visitor.visit_dyn_trait(dyn_bounds, *lifetime),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FnSig<'a> {
     pub bound_lifetimes: u64,
@@ -228,16 +334,68 @@ impl Display for FnSig<'_> {
     }
 }
 
+impl<'a> traits::FnSig for FnSig<'a> {
+    type Type = Type<'a>;
+    type Abi = Abi<'a>;
+
+    fn bound_lifetimes(&self) -> u64 {
+        self.bound_lifetimes
+    }
+
+    fn is_unsafe(&self) -> bool {
+        self.is_unsafe
+    }
+
+    fn abi(&self) -> Option<&Self::Abi> {
+        self.abi.as_ref()
+    }
+
+    fn argument_types(&self) -> impl IntoIterator<Item = &Self::Type> {
+        self.argument_types.iter().map(Rc::as_ref)
+    }
+
+    fn return_type(&self) -> &Self::Type {
+        &self.return_type
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynBounds<'a> {
     pub bound_lifetimes: u64,
     pub dyn_traits: Vec<DynTrait<'a>>,
 }
 
+impl<'a> traits::DynBounds for DynBounds<'a> {
+    type DynTrait = DynTrait<'a>;
+
+    fn bound_lifetimes(&self) -> u64 {
+        self.bound_lifetimes
+    }
+
+    fn dyn_traits(&self) -> impl IntoIterator<Item = &Self::DynTrait> {
+        &self.dyn_traits
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynTrait<'a> {
     pub path: Rc<Path<'a>>,
     pub dyn_trait_assoc_bindings: Vec<(Cow<'a, str>, Rc<Type<'a>>)>,
+}
+
+impl<'a> traits::DynTrait for DynTrait<'a> {
+    type Path = Path<'a>;
+    type Type = Type<'a>;
+
+    fn path(&self) -> &Self::Path {
+        &self.path
+    }
+
+    fn dyn_trait_assoc_bindings(&self) -> impl IntoIterator<Item = (&str, &Self::Type)> {
+        self.dyn_trait_assoc_bindings
+            .iter()
+            .map(|(name, value)| (name.as_ref(), value.as_ref()))
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -268,13 +426,6 @@ pub enum Const<'a> {
     Placeholder,
 }
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ConstFields<'a> {
-    Unit,
-    Tuple(Vec<Rc<Const<'a>>>),
-    Struct(Vec<(Identifier<'a>, Rc<Const<'a>>)>),
-}
-
 impl Const<'_> {
     /// Returns an object that implements [`Display`] for printing the constant value.
     #[must_use]
@@ -287,6 +438,65 @@ impl Display for Const<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         self.display(if f.alternate() { Style::Normal } else { Style::Long })
             .fmt(f)
+    }
+}
+
+impl<'a> traits::Const for Const<'a> {
+    type Path = Path<'a>;
+    type ConstFields = ConstFields<'a>;
+
+    fn visit<'b, 'c, V>(&'b self, visitor: &'c mut V) -> V::Result<'c>
+    where
+        V: traits::ConstVisitor<'b, Self::Path, Self, Self::ConstFields> + ?Sized,
+    {
+        match self {
+            Const::I8(value) => visitor.visit_i8(*value),
+            Const::U8(value) => visitor.visit_u8(*value),
+            Const::Isize(value) => visitor.visit_isize(*value),
+            Const::Usize(value) => visitor.visit_usize(*value),
+            Const::I32(value) => visitor.visit_i32(*value),
+            Const::U32(value) => visitor.visit_u32(*value),
+            Const::I128(value) => visitor.visit_i128(*value),
+            Const::U128(value) => visitor.visit_u128(*value),
+            Const::I16(value) => visitor.visit_i16(*value),
+            Const::U16(value) => visitor.visit_u16(*value),
+            Const::I64(value) => visitor.visit_i64(*value),
+            Const::U64(value) => visitor.visit_u64(*value),
+            Const::Bool(value) => visitor.visit_bool(*value),
+            Const::Char(value) => visitor.visit_char(*value),
+            Const::Str(value) => visitor.visit_str(value),
+            Const::Ref(value) => visitor.visit_ref(value),
+            Const::RefMut(value) => visitor.visit_ref_mut(value),
+            Const::Array(values) => visitor.visit_array(values.iter().map(Rc::as_ref)),
+            Const::Tuple(values) => visitor.visit_tuple(values.iter().map(Rc::as_ref)),
+            Const::NamedStruct { path, fields } => visitor.visit_named_struct(path, fields),
+            Const::Placeholder => visitor.visit_placeholder(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ConstFields<'a> {
+    Unit,
+    Tuple(Vec<Rc<Const<'a>>>),
+    Struct(Vec<(Identifier<'a>, Rc<Const<'a>>)>),
+}
+
+impl<'a> traits::ConstFields for ConstFields<'a> {
+    type Identifier = Identifier<'a>;
+    type Const = Const<'a>;
+
+    fn visit<'b, 'c, V>(&'b self, visitor: &'c mut V) -> V::Result<'c>
+    where
+        V: traits::ConstFieldsVisitor<'b, Self::Identifier, Self::Const> + ?Sized,
+    {
+        match self {
+            ConstFields::Unit => visitor.visit_unit(),
+            ConstFields::Tuple(values) => visitor.visit_tuple(values.iter().map(Rc::as_ref)),
+            ConstFields::Struct(values) => {
+                visitor.visit_struct(values.iter().map(|(name, value)| (name, value.as_ref())))
+            }
+        }
     }
 }
 
@@ -380,8 +590,8 @@ impl<'a> parsers::Builder<'a> for Builder<'a> {
         GenericArg::Type(r#type)
     }
 
-    fn make_const_generic_arg(&mut self, r#const: Self::Const) -> Self::GenericArg {
-        GenericArg::Const(r#const)
+    fn make_const_generic_arg(&mut self, value: Self::Const) -> Self::GenericArg {
+        GenericArg::Const(value)
     }
 
     fn make_basic_type_type(&mut self, basic_type: Self::BasicType) -> Self::Type {
