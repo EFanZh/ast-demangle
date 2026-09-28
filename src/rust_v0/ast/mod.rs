@@ -66,7 +66,7 @@ impl BasicType {
     /// Returns an object that implements [`Display`] for printing the basic type.
     #[must_use]
     pub fn display(self) -> impl Display {
-        display::display_basic_type(self)
+        fmt::from_fn(move |f| display::display_basic_type(&self).fmt(f))
     }
 }
 

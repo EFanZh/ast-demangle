@@ -23,7 +23,7 @@ impl<'a> Symbol<'a> {
     /// Returns an object that implements [`Display`] for printing the symbol.
     #[must_use]
     pub fn display(&self, style: Style) -> impl Display {
-        display::display_path(&self.path, style, 0, true)
+        display::display_path(self.path.as_ref(), style, 0, true)
     }
 
     /// Parses `input` with Rust
@@ -90,7 +90,7 @@ pub enum Path<'a> {
     },
     Nested {
         namespace: u8,
-        path: Rc<Self>,
+        parent: Rc<Self>,
         identifier: Identifier<'a>,
     },
     Generic {
@@ -142,7 +142,7 @@ impl Debug for Path<'_> {
                 .finish(),
             Self::Nested {
                 namespace,
-                path,
+                parent: path,
                 identifier,
             } => f
                 .debug_struct("Nested")
@@ -172,9 +172,22 @@ impl<'a> traits::Path for Path<'a> {
     type GenericArg = GenericArg<'a>;
     type Type = Type<'a>;
 
+    type GenericArgs<'b>
+        = &'b [GenericArg<'a>]
+    where
+        Self: 'b;
+
     fn visit<'b, 'c, V>(&'b self, visitor: &'c mut V) -> V::Result<'c>
     where
-        V: traits::PathVisitor<'b, Self, Self::ImplPath, Self::Identifier, Self::GenericArg, Self::Type> + ?Sized,
+        V: traits::PathVisitor<
+                'b,
+                Self,
+                Self::ImplPath,
+                Self::Identifier,
+                Self::GenericArg,
+                Self::Type,
+                Self::GenericArgs<'b>,
+            > + ?Sized,
     {
         match self {
             Path::CrateRoot(identifier) => visitor.visit_crate_root(identifier),
@@ -187,9 +200,9 @@ impl<'a> traits::Path for Path<'a> {
             Path::TraitDefinition { r#type, r#trait } => visitor.visit_trait_definition(r#type, r#trait),
             Path::Nested {
                 namespace,
-                path,
+                parent,
                 identifier,
-            } => visitor.visit_nested(*namespace, path, identifier),
+            } => visitor.visit_nested(*namespace, parent, identifier),
             Path::Generic { path, generic_args } => visitor.visit_generic(path, generic_args),
         }
     }
@@ -380,7 +393,7 @@ impl<'a> traits::DynBounds for DynBounds<'a> {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DynTrait<'a> {
     pub path: Rc<Path<'a>>,
-    pub dyn_trait_assoc_bindings: Vec<(Cow<'a, str>, Rc<Type<'a>>)>,
+    pub assoc_bindings: Vec<(Cow<'a, str>, Rc<Type<'a>>)>,
 }
 
 impl<'a> traits::DynTrait for DynTrait<'a> {
@@ -391,8 +404,8 @@ impl<'a> traits::DynTrait for DynTrait<'a> {
         &self.path
     }
 
-    fn dyn_trait_assoc_bindings(&self) -> impl IntoIterator<Item = (&str, &Self::Type)> {
-        self.dyn_trait_assoc_bindings
+    fn assoc_bindings(&self) -> impl IntoIterator<Item = (&str, &Self::Type)> {
+        self.assoc_bindings
             .iter()
             .map(|(name, value)| (name.as_ref(), value.as_ref()))
     }
@@ -492,9 +505,9 @@ impl<'a> traits::ConstFields for ConstFields<'a> {
     {
         match self {
             ConstFields::Unit => visitor.visit_unit(),
-            ConstFields::Tuple(values) => visitor.visit_tuple(values.iter().map(Rc::as_ref)),
-            ConstFields::Struct(values) => {
-                visitor.visit_struct(values.iter().map(|(name, value)| (name, value.as_ref())))
+            ConstFields::Tuple(fields) => visitor.visit_tuple(fields.iter().map(Rc::as_ref)),
+            ConstFields::Struct(fields) => {
+                visitor.visit_struct(fields.iter().map(|(name, value)| (name, value.as_ref())))
             }
         }
     }
@@ -565,7 +578,7 @@ impl<'a> parsers::Builder<'a> for Builder<'a> {
     fn make_nested_path(&mut self, namespace: u8, path: Self::Path, identifier: Self::Identifier) -> Self::Path {
         Rc::new(Path::Nested {
             namespace,
-            path,
+            parent: path,
             identifier,
         })
     }
@@ -754,15 +767,8 @@ impl<'a> parsers::Builder<'a> for Builder<'a> {
         }
     }
 
-    fn make_dyn_trait(
-        &mut self,
-        path: Self::Path,
-        dyn_trait_assoc_bindings: Vec<(Cow<'a, str>, Self::Type)>,
-    ) -> Self::DynTrait {
-        DynTrait {
-            path,
-            dyn_trait_assoc_bindings,
-        }
+    fn make_dyn_trait(&mut self, path: Self::Path, assoc_bindings: Vec<(Cow<'a, str>, Self::Type)>) -> Self::DynTrait {
+        DynTrait { path, assoc_bindings }
     }
 
     fn make_i8_const(&mut self, value: i8) -> Self::Const {

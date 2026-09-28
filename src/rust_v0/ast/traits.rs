@@ -7,12 +7,12 @@ pub trait Symbol {
     fn vendor_specific_suffix(&self) -> Option<&str>;
 }
 
-pub trait PathVisitor<'a, P, IP, I, G, T>
+pub trait PathVisitor<'a, P, IP, I, G, T, GS>
 where
     P: ?Sized,
     IP: ?Sized,
     I: ?Sized,
-    G: ?Sized + 'a,
+    G: ?Sized,
     T: ?Sized,
 {
     type Result<'b>
@@ -23,9 +23,8 @@ where
     fn visit_inherent_impl(&mut self, impl_path: &'a IP, r#type: &'a T) -> Self::Result<'_>;
     fn visit_trait_impl(&mut self, impl_path: &'a IP, r#type: &'a T, r#trait: &'a P) -> Self::Result<'_>;
     fn visit_trait_definition(&mut self, r#type: &'a T, r#trait: &'a P) -> Self::Result<'_>;
-    fn visit_nested(&mut self, namespace: u8, path: &'a P, identifier: &'a I) -> Self::Result<'_>;
-
-    fn visit_generic(&mut self, path: &'a P, generic_args: impl IntoIterator<Item = &'a G>) -> Self::Result<'_>;
+    fn visit_nested(&mut self, namespace: u8, parent: &'a P, identifier: &'a I) -> Self::Result<'_>;
+    fn visit_generic(&mut self, path: &'a P, generic_args: GS) -> Self::Result<'_>;
 }
 
 pub trait Path {
@@ -34,9 +33,14 @@ pub trait Path {
     type GenericArg: GenericArg + ?Sized;
     type Type: Type + ?Sized;
 
+    type GenericArgs<'a>: IntoIterator<Item = &'a Self::GenericArg>
+    where
+        Self: 'a;
+
     fn visit<'a, 'b, V>(&'a self, visitor: &'b mut V) -> V::Result<'b>
     where
-        V: PathVisitor<'a, Self, Self::ImplPath, Self::Identifier, Self::GenericArg, Self::Type> + ?Sized;
+        V: PathVisitor<'a, Self, Self::ImplPath, Self::Identifier, Self::GenericArg, Self::Type, Self::GenericArgs<'a>>
+            + ?Sized;
 }
 
 pub trait ImplPath {
@@ -173,7 +177,7 @@ pub trait DynTrait {
     type Type: Type + ?Sized;
 
     fn path(&self) -> &Self::Path;
-    fn dyn_trait_assoc_bindings(&self) -> impl IntoIterator<Item = (&str, &Self::Type)>;
+    fn assoc_bindings(&self) -> impl IntoIterator<Item = (&str, &Self::Type)>;
 }
 
 pub trait ConstVisitor<'a, P, C, CF>
@@ -228,8 +232,8 @@ where
         Self: 'b;
 
     fn visit_unit(&mut self) -> Self::Result<'_>;
-    fn visit_tuple(&mut self, values: impl IntoIterator<Item = &'a C>) -> Self::Result<'_>;
-    fn visit_struct(&mut self, values: impl IntoIterator<Item = (&'a I, &'a C)>) -> Self::Result<'_>;
+    fn visit_tuple(&mut self, fields: impl IntoIterator<Item = &'a C>) -> Self::Result<'_>;
+    fn visit_struct(&mut self, fields: impl IntoIterator<Item = (&'a I, &'a C)>) -> Self::Result<'_>;
 }
 
 pub trait ConstFields {

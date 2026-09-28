@@ -124,11 +124,7 @@ pub trait Builder<'a>: 'a {
 
     // Dyn trait constructor.
 
-    fn make_dyn_trait(
-        &mut self,
-        path: Self::Path,
-        dyn_trait_assoc_bindings: Vec<(Cow<'a, str>, Self::Type)>,
-    ) -> Self::DynTrait;
+    fn make_dyn_trait(&mut self, path: Self::Path, assoc_bindings: Vec<(Cow<'a, str>, Self::Type)>) -> Self::DynTrait;
 
     // Const constructors.
 
@@ -365,9 +361,10 @@ where
 
 // References:
 //
-// - <https://github.com/rust-lang/rustc-demangle/blob/main/src/v0.rs>.
 // - <https://github.com/michaelwoerister/std-mangle-rs/blob/master/src/ast_demangle.rs>.
-// - <https://github.com/rust-lang/rust/blob/master/compiler/rustc_symbol_mangling/src/v0.rs>.
+// - <https://github.com/rust-lang/rust/blob/main/compiler/rustc_symbol_mangling/src/v0.rs>.
+// - <https://github.com/rust-lang/rust/blob/main/src/doc/rustc/src/symbol-mangling/v0.md>.
+// - <https://github.com/rust-lang/rustc-demangle/blob/main/src/v0.rs>.
 // - <https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html>.
 
 pub fn parse_symbol<'a, B>(input: &'a str, builder: B) -> Result<(B::Symbol, &'a str), ()>

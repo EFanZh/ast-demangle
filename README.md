@@ -44,9 +44,9 @@ assert_eq!(
         version: None,
         path: Path::Nested {
             namespace: b'v',
-            path: Path::Nested {
+            parent: Path::Nested {
                 namespace: b't',
-                path: Path::CrateRoot(Identifier {
+                parent: Path::CrateRoot(Identifier {
                     name: Cow::Borrowed("regex"),
                     disambiguator: 0x4df1_4705_8689_a776,
                 })
