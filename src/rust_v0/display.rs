@@ -509,161 +509,161 @@ pub fn display_basic_type(basic_type: &(impl BasicType + ?Sized)) -> impl Displa
     fmt_tools::fmt_fn(move |f| f.write_str(basic_type.visit(&mut Visitor)))
 }
 
-pub fn display_fn_sig(fn_sig: &(impl FnSig + ?Sized), style: Style, bound_lifetime_depth: u64) -> impl Display {
-    struct IsUnitType;
+struct IsUnitType;
 
-    impl<'a, P, T, B, F, D, C> TypeVisitor<'a, P, T, B, F, D, C> for IsUnitType
+impl<'a, P, T, B, F, D, C> TypeVisitor<'a, P, T, B, F, D, C> for IsUnitType
+where
+    P: ?Sized,
+    T: ?Sized + 'a,
+    B: BasicType + ?Sized,
+    F: ?Sized,
+    D: ?Sized,
+    C: ?Sized,
+{
+    type Result<'b>
+        = bool
     where
-        P: ?Sized,
-        T: ?Sized + 'a,
-        B: BasicType + ?Sized,
-        F: ?Sized,
-        D: ?Sized,
-        C: ?Sized,
-    {
-        type Result<'b>
-            = bool
-        where
-            Self: 'b;
+        Self: 'b;
 
-        fn visit_basic(&mut self, basic_type: &'a B) -> Self::Result<'_> {
-            struct IsUnitType;
+    fn visit_basic(&mut self, basic_type: &'a B) -> Self::Result<'_> {
+        struct IsUnitType;
 
-            impl BasicTypeVisitor for IsUnitType {
-                type Result<'b>
-                    = bool
-                where
-                    Self: 'b;
+        impl BasicTypeVisitor for IsUnitType {
+            type Result<'b>
+                = bool
+            where
+                Self: 'b;
 
-                fn visit_i8(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_bool(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_char(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_f64(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_str(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_f32(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_u8(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_isize(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_usize(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_i32(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_u32(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_i128(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_u128(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_i16(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_u16(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_unit(&mut self) -> Self::Result<'_> {
-                    true
-                }
-
-                fn visit_ellipsis(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_i64(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_u64(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_never(&mut self) -> Self::Result<'_> {
-                    false
-                }
-
-                fn visit_placeholder(&mut self) -> Self::Result<'_> {
-                    false
-                }
+            fn visit_i8(&mut self) -> Self::Result<'_> {
+                false
             }
 
-            basic_type.visit(&mut IsUnitType)
+            fn visit_bool(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_char(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_f64(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_str(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_f32(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_u8(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_isize(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_usize(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_i32(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_u32(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_i128(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_u128(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_i16(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_u16(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_unit(&mut self) -> Self::Result<'_> {
+                true
+            }
+
+            fn visit_ellipsis(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_i64(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_u64(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_never(&mut self) -> Self::Result<'_> {
+                false
+            }
+
+            fn visit_placeholder(&mut self) -> Self::Result<'_> {
+                false
+            }
         }
 
-        fn visit_named(&mut self, _: &'a P) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_array(&mut self, _: &'a T, _: &'a C) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_slice(&mut self, _: &'a T) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_tuple(&mut self, _: impl IntoIterator<Item = &'a T>) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_ref(&mut self, _: u64, _: &'a T) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_ref_mut(&mut self, _: u64, _: &'a T) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_ptr_const(&mut self, _: &'a T) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_ptr_mut(&mut self, _: &'a T) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_fn(&mut self, _: &'a F) -> Self::Result<'_> {
-            false
-        }
-
-        fn visit_dyn_trait(&mut self, _: &'a D, _: u64) -> Self::Result<'_> {
-            false
-        }
+        basic_type.visit(&mut IsUnitType)
     }
 
+    fn visit_named(&mut self, _: &'a P) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_array(&mut self, _: &'a T, _: &'a C) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_slice(&mut self, _: &'a T) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_tuple(&mut self, _: impl IntoIterator<Item = &'a T>) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_ref(&mut self, _: u64, _: &'a T) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_ref_mut(&mut self, _: u64, _: &'a T) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_ptr_const(&mut self, _: &'a T) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_ptr_mut(&mut self, _: &'a T) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_fn(&mut self, _: &'a F) -> Self::Result<'_> {
+        false
+    }
+
+    fn visit_dyn_trait(&mut self, _: &'a D, _: u64) -> Self::Result<'_> {
+        false
+    }
+}
+
+pub fn display_fn_sig(fn_sig: &(impl FnSig + ?Sized), style: Style, bound_lifetime_depth: u64) -> impl Display {
     fmt_tools::fmt_fn(move |f| {
         let bound_lifetimes = fn_sig.bound_lifetimes();
 
@@ -887,268 +887,268 @@ fn wrap_with_braces_if_needed(
     }
 }
 
+struct DisplayConstVisitor<'a, 'b> {
+    style: Style,
+    bound_lifetime_depth: u64,
+    in_value: bool,
+    formatter: &'a mut Formatter<'b>,
+}
+
+impl<'a, P, C, CF> ConstVisitor<'a, P, C, CF> for DisplayConstVisitor<'_, '_>
+where
+    P: Path + ?Sized,
+    C: Const + ?Sized + 'a,
+    CF: ConstFields + ?Sized,
+{
+    type Result<'b>
+        = fmt::Result
+    where
+        Self: 'b;
+
+    fn visit_i8(&mut self, value: i8) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_u8(&mut self, value: u8) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_isize(&mut self, value: isize) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_usize(&mut self, value: usize) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_i32(&mut self, value: i32) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_u32(&mut self, value: u32) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_i128(&mut self, value: i128) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_u128(&mut self, value: u128) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_i16(&mut self, value: i16) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_u16(&mut self, value: u16) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_i64(&mut self, value: i64) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_u64(&mut self, value: u64) -> Self::Result<'_> {
+        write_integer(self.formatter, value, self.style)
+    }
+
+    fn visit_bool(&mut self, value: bool) -> Self::Result<'_> {
+        Debug::fmt(&value, self.formatter)
+    }
+
+    fn visit_char(&mut self, value: char) -> Self::Result<'_> {
+        Debug::fmt(&value, self.formatter)
+    }
+
+    fn visit_str(&mut self, value: &'a str) -> Self::Result<'_> {
+        wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
+            f.write_char('*')?;
+            Debug::fmt(value, f)
+        })
+    }
+
+    fn visit_ref(&mut self, value: &'a C) -> Self::Result<'_> {
+        struct GetStr;
+
+        impl<'a, P, C, CF> ConstVisitor<'a, P, C, CF> for GetStr
+        where
+            P: ?Sized,
+            C: ?Sized + 'a,
+            CF: ?Sized,
+        {
+            type Result<'b>
+                = Option<&'a str>
+            where
+                Self: 'b;
+
+            fn visit_i8(&mut self, _: i8) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_u8(&mut self, _: u8) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_isize(&mut self, _: isize) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_usize(&mut self, _: usize) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_i32(&mut self, _: i32) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_u32(&mut self, _: u32) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_i128(&mut self, _: i128) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_u128(&mut self, _: u128) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_i16(&mut self, _: i16) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_u16(&mut self, _: u16) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_i64(&mut self, _: i64) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_u64(&mut self, _: u64) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_bool(&mut self, _: bool) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_char(&mut self, _: char) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_str(&mut self, value: &'a str) -> Self::Result<'_> {
+                Some(value)
+            }
+
+            fn visit_ref(&mut self, _: &'a C) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_ref_mut(&mut self, _: &'a C) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_array(&mut self, _: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_tuple(&mut self, _: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_named_struct(&mut self, _: &'a P, _: &'a CF) -> Self::Result<'_> {
+                None
+            }
+
+            fn visit_placeholder(&mut self) -> Self::Result<'_> {
+                None
+            }
+        }
+
+        if let Some(value) = value.visit(&mut GetStr) {
+            Debug::fmt(value, self.formatter)
+        } else {
+            wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
+                f.write_char('&')?;
+                Display::fmt(&display_const(value, self.style, self.bound_lifetime_depth, true), f)
+            })
+        }
+    }
+
+    fn visit_ref_mut(&mut self, value: &'a C) -> Self::Result<'_> {
+        wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
+            f.write_str("&mut ")?;
+            Display::fmt(&display_const(value, self.style, self.bound_lifetime_depth, true), f)
+        })
+    }
+
+    fn visit_array(&mut self, values: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
+        wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
+            f.write_char('[')?;
+
+            let mut iter = values.into_iter();
+
+            if let Some(value) = iter.next() {
+                display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)?;
+
+                iter.try_for_each(|value| {
+                    f.write_str(", ")?;
+                    display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)
+                })?;
+            }
+
+            f.write_char(']')
+        })
+    }
+
+    fn visit_tuple(&mut self, values: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
+        wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
+            f.write_char('(')?;
+
+            let mut iter = values.into_iter();
+
+            if let Some(value) = iter.next() {
+                display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)?;
+
+                if let Some(value) = iter.next() {
+                    f.write_str(", ")?;
+                    display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)?;
+
+                    iter.try_for_each(|value| {
+                        f.write_str(", ")?;
+                        display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)
+                    })
+                } else {
+                    f.write_char(',')
+                }?;
+            }
+
+            f.write_char(')')
+        })
+    }
+
+    fn visit_named_struct(&mut self, path: &'a P, fields: &'a CF) -> Self::Result<'_> {
+        wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
+            display_path(path, self.style, self.bound_lifetime_depth, true).fmt(f)?;
+            display_const_fields(fields, self.style, self.bound_lifetime_depth).fmt(f)
+        })
+    }
+
+    fn visit_placeholder(&mut self) -> Self::Result<'_> {
+        self.formatter.write_char('_')
+    }
+}
+
 pub fn display_const(
     value: &(impl Const + ?Sized),
     style: Style,
     bound_lifetime_depth: u64,
     in_value: bool,
 ) -> impl Display {
-    struct Visitor<'a, 'b> {
-        style: Style,
-        bound_lifetime_depth: u64,
-        in_value: bool,
-        formatter: &'a mut Formatter<'b>,
-    }
-
-    impl<'a, P, C, CF> ConstVisitor<'a, P, C, CF> for Visitor<'_, '_>
-    where
-        P: Path + ?Sized,
-        C: Const + ?Sized + 'a,
-        CF: ConstFields + ?Sized,
-    {
-        type Result<'b>
-            = fmt::Result
-        where
-            Self: 'b;
-
-        fn visit_i8(&mut self, value: i8) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_u8(&mut self, value: u8) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_isize(&mut self, value: isize) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_usize(&mut self, value: usize) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_i32(&mut self, value: i32) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_u32(&mut self, value: u32) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_i128(&mut self, value: i128) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_u128(&mut self, value: u128) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_i16(&mut self, value: i16) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_u16(&mut self, value: u16) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_i64(&mut self, value: i64) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_u64(&mut self, value: u64) -> Self::Result<'_> {
-            write_integer(self.formatter, value, self.style)
-        }
-
-        fn visit_bool(&mut self, value: bool) -> Self::Result<'_> {
-            Debug::fmt(&value, self.formatter)
-        }
-
-        fn visit_char(&mut self, value: char) -> Self::Result<'_> {
-            Debug::fmt(&value, self.formatter)
-        }
-
-        fn visit_str(&mut self, value: &'a str) -> Self::Result<'_> {
-            wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
-                f.write_char('*')?;
-                Debug::fmt(value, f)
-            })
-        }
-
-        fn visit_ref(&mut self, value: &'a C) -> Self::Result<'_> {
-            struct GetStr;
-
-            impl<'a, P, C, CF> ConstVisitor<'a, P, C, CF> for GetStr
-            where
-                P: ?Sized,
-                C: ?Sized + 'a,
-                CF: ?Sized,
-            {
-                type Result<'b>
-                    = Option<&'a str>
-                where
-                    Self: 'b;
-
-                fn visit_i8(&mut self, _: i8) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_u8(&mut self, _: u8) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_isize(&mut self, _: isize) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_usize(&mut self, _: usize) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_i32(&mut self, _: i32) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_u32(&mut self, _: u32) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_i128(&mut self, _: i128) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_u128(&mut self, _: u128) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_i16(&mut self, _: i16) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_u16(&mut self, _: u16) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_i64(&mut self, _: i64) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_u64(&mut self, _: u64) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_bool(&mut self, _: bool) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_char(&mut self, _: char) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_str(&mut self, value: &'a str) -> Self::Result<'_> {
-                    Some(value)
-                }
-
-                fn visit_ref(&mut self, _: &'a C) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_ref_mut(&mut self, _: &'a C) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_array(&mut self, _: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_tuple(&mut self, _: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_named_struct(&mut self, _: &'a P, _: &'a CF) -> Self::Result<'_> {
-                    None
-                }
-
-                fn visit_placeholder(&mut self) -> Self::Result<'_> {
-                    None
-                }
-            }
-
-            if let Some(value) = value.visit(&mut GetStr) {
-                Debug::fmt(value, self.formatter)
-            } else {
-                wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
-                    f.write_char('&')?;
-                    Display::fmt(&display_const(value, self.style, self.bound_lifetime_depth, true), f)
-                })
-            }
-        }
-
-        fn visit_ref_mut(&mut self, value: &'a C) -> Self::Result<'_> {
-            wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
-                f.write_str("&mut ")?;
-                Display::fmt(&display_const(value, self.style, self.bound_lifetime_depth, true), f)
-            })
-        }
-
-        fn visit_array(&mut self, values: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
-            wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
-                f.write_char('[')?;
-
-                let mut iter = values.into_iter();
-
-                if let Some(value) = iter.next() {
-                    display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)?;
-
-                    iter.try_for_each(|value| {
-                        f.write_str(", ")?;
-                        display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)
-                    })?;
-                }
-
-                f.write_char(']')
-            })
-        }
-
-        fn visit_tuple(&mut self, values: impl IntoIterator<Item = &'a C>) -> Self::Result<'_> {
-            wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
-                f.write_char('(')?;
-
-                let mut iter = values.into_iter();
-
-                if let Some(value) = iter.next() {
-                    display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)?;
-
-                    if let Some(value) = iter.next() {
-                        f.write_str(", ")?;
-                        display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)?;
-
-                        iter.try_for_each(|value| {
-                            f.write_str(", ")?;
-                            display_const(value, self.style, self.bound_lifetime_depth, true).fmt(f)
-                        })
-                    } else {
-                        f.write_char(',')
-                    }?;
-                }
-
-                f.write_char(')')
-            })
-        }
-
-        fn visit_named_struct(&mut self, path: &'a P, fields: &'a CF) -> Self::Result<'_> {
-            wrap_with_braces_if_needed(self.in_value, self.formatter, |f| {
-                display_path(path, self.style, self.bound_lifetime_depth, true).fmt(f)?;
-                display_const_fields(fields, self.style, self.bound_lifetime_depth).fmt(f)
-            })
-        }
-
-        fn visit_placeholder(&mut self) -> Self::Result<'_> {
-            self.formatter.write_char('_')
-        }
-    }
-
     fmt_tools::fmt_fn(move |f| {
-        value.visit(&mut Visitor {
+        value.visit(&mut DisplayConstVisitor {
             style,
             bound_lifetime_depth,
             in_value,
